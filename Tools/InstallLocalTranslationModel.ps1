@@ -1,14 +1,25 @@
 param(
-    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path,
+    [ValidateSet("de", "ru")]
+    [string]$TargetLanguage = "ru"
 )
 
 $ErrorActionPreference = "Stop"
 
-$modelDir = Join-Path $ProjectRoot "Models\Translation\en-ru"
+$languagePair = "en-$TargetLanguage"
+$modelDir = Join-Path $ProjectRoot "Models\Translation\$languagePair"
+$templateModelDir = Join-Path $ProjectRoot "Models\Translation\en-ru"
 $directMlVersion = "1.14.1"
 $directMlCoreVersion = "1.15.4"
 if (-not (Test-Path $modelDir)) {
-    throw "Model folder not found: $modelDir"
+    if (-not (Test-Path $templateModelDir)) {
+        throw "Template model folder not found: $templateModelDir"
+    }
+
+    New-Item -ItemType Directory -Force -Path $modelDir | Out-Null
+    foreach ($file in @("translator.cmd", "translator.mjs", "download-model.mjs", "package.json", "package-lock.json", "README.md")) {
+        Copy-Item -LiteralPath (Join-Path $templateModelDir $file) -Destination (Join-Path $modelDir $file) -Force
+    }
 }
 
 $node = Get-Command node -ErrorAction SilentlyContinue
@@ -40,7 +51,7 @@ try {
         & $npm.Source install --omit=dev
     }
 
-    Write-Host "Downloading EN-RU model into local cache..."
+    Write-Host "Downloading $($languagePair.ToUpperInvariant()) model into local cache..."
     & $node.Source .\download-model.mjs
 
     Write-Host "Installing DirectML runtime..."
@@ -134,7 +145,7 @@ if (process.env.ANEVRED_TRANSLATION_ENGINE === 'directml') {
         }
     }
 
-    Write-Host "Local EN-RU translation model installed."
+    Write-Host "Local $($languagePair.ToUpperInvariant()) translation model installed."
 }
 finally {
     Pop-Location

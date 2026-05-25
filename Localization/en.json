@@ -23,7 +23,7 @@
   "TranslationEngineAuto": "Automatic",
   "TranslationEngineCpu": "CPU",
   "TranslationEngineDirectMl": "GPU / DirectML",
-  "ScreenTranslationHint": "Local and click-through: mouse input still goes to the game. OCR/translation does not use cloud services.",
+  "ScreenTranslationHint": "Manual mode: leave auto-refresh off and press the capture hotkey when you want a new translation. Translation runs through Chrome when Chrome supports its built-in Translator API.",
   "Ram": "RAM",
   "Commit": "Commit",
   "Cpu": "CPU",
@@ -88,8 +88,8 @@
   "LogPowerPlanFailed": "Power plan could not be changed: powercfg {0}",
   "LogExported": "Logs exported: {0}",
   "LogMonitoringFailed": "Monitoring failed: {0}",
-  "LogAutostartFailed": "Autostart could not be changed: {0}"
-  ,"StatusProtected": "Protected",
+  "LogAutostartFailed": "Autostart could not be changed: {0}",
+  "StatusProtected": "Protected",
   "StatusSystem": "System",
   "StatusBackground": "Background",
   "StatusForeground": "Foreground",
@@ -239,5 +239,11 @@
   "LogMemoryCompressionDisableRequested": "Memory Compression disable requested. Admin confirmation is required; full effect may need a restart.",
   "LogMemoryCompressionEnableRequested": "Memory Compression enable requested. Admin confirmation is required; full effect may need a restart.",
   "LogMemoryCompressionAdminCanceled": "Memory Compression change was canceled or denied without admin rights.",
-  "LogMemoryCompressionFailed": "Memory Compression change failed: {0}"
+  "LogMemoryCompressionFailed": "Memory Compression change failed: {0}",
+  "ScreenTranslationAutoRefresh": "Auto-refresh translated text",
+  "TranslationProvider": "Provider",
+  "TranslateNow": "Translate now",
+  "CheckChromeTranslation": "Check Chrome",
+  "TranslationProviderChromeSelected": "Chrome translation is active. No API key is needed.",
+  "ChromePrivacyNotice": "Chrome Translator may send recognized text through Chrome translation services depending on Chrome support and language availability."
 }

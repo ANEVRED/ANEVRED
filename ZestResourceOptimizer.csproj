@@ -20,9 +20,6 @@
     <None Update="Tools\*.ps1">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Models\Translation\*\README.md;Models\Translation\*\*.cmd;Models\Translation\*\*.mjs;Models\Translation\*\package.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <Page Update="Themes\*.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

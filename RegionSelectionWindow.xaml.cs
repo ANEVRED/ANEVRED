@@ -36,10 +36,23 @@ public partial class RegionSelectionWindow : Window
         base.OnClosed(e);
     }
 
+    protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
+    {
+        if (_isDragging)
+        {
+            CompleteSelection(e.GetPosition(Surface));
+            e.Handled = true;
+            return;
+        }
+
+        base.OnMouseLeftButtonUp(e);
+    }
+
     private void SurfaceMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _start = e.GetPosition(Surface);
         _isDragging = true;
+        Mouse.OverrideCursor = System.Windows.Input.Cursors.Cross;
         Cursor = System.Windows.Input.Cursors.Cross;
         SelectionRectangle.Visibility = Visibility.Visible;
         System.Windows.Controls.Canvas.SetLeft(SelectionRectangle, _start.X);
@@ -47,6 +60,7 @@ public partial class RegionSelectionWindow : Window
         SelectionRectangle.Width = 0;
         SelectionRectangle.Height = 0;
         Surface.CaptureMouse();
+        e.Handled = true;
     }
 
     private void SurfaceMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
@@ -72,9 +86,12 @@ public partial class RegionSelectionWindow : Window
             return;
         }
 
-        _isDragging = false;
-        Surface.ReleaseMouseCapture();
-        var current = e.GetPosition(Surface);
+        CompleteSelection(e.GetPosition(Surface));
+        e.Handled = true;
+    }
+
+    private void CompleteSelection(System.Windows.Point current)
+    {
         var left = Math.Min(_start.X, current.X) + Left;
         var top = Math.Min(_start.Y, current.Y) + Top;
         var width = Math.Abs(current.X - _start.X);
@@ -97,8 +114,14 @@ public partial class RegionSelectionWindow : Window
     private void CloseWithResult(bool result)
     {
         CleanupCursorAndCapture();
-        DialogResult = result;
-        Close();
+        try
+        {
+            DialogResult = result;
+        }
+        catch (InvalidOperationException)
+        {
+            Close();
+        }
     }
 
     private void CleanupCursorAndCapture()

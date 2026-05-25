@@ -7,6 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using ZestResourceOptimizer.Models;
 using Forms = System.Windows.Forms;
+using ZestResourceOptimizer.Services;
 using ZestResourceOptimizer.ViewModels;
 
 namespace ZestResourceOptimizer;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _screenTranslationCancellation;
     private bool _isScreenTranslationRunning;
     private int _screenTranslationRunId;
+    private readonly HashSet<int> _registeredHotkeyIds = [];
     private IntPtr _keyboardHook;
     private DateTime _lastTranslationToggle = DateTime.MinValue;
     private DateTime _lastTranslationCapture = DateTime.MinValue;
@@ -230,6 +232,7 @@ public partial class MainWindow : Window
     private void RegisterGlobalHotkeys()
     {
         UnregisterGlobalHotkeys();
+        _registeredHotkeyIds.Clear();
         var registered = new List<string>();
         var failed = new List<string>();
         RegisterConfiguredHotkey(HotkeyScreenTranslation, _viewModel.Settings.ScreenTranslationHotkey, registered, failed);
@@ -306,6 +309,7 @@ public partial class MainWindow : Window
 
         if (RegisterHotKey(_windowHandle, id, modifiers | ModNoRepeat, key))
         {
+            _registeredHotkeyIds.Add(id);
             registered.Add(hotkeyText);
         }
         else
@@ -409,6 +413,19 @@ public partial class MainWindow : Window
                 StopScreenTranslation();
             }
         }
+
+        if (e.PropertyName == nameof(AppSettings.ScreenTranslationAutoRefresh))
+        {
+            if (_viewModel.Settings.ScreenTranslationEnabled && _viewModel.Settings.ScreenTranslationAutoRefresh)
+            {
+                _screenTranslationTimer.Start();
+            }
+            else
+            {
+                _screenTranslationTimer.Stop();
+            }
+        }
+
     }
 
     private void CaptureHotkeyButtonClick(object sender, RoutedEventArgs e)
@@ -555,7 +572,7 @@ public partial class MainWindow : Window
 
         _translationOverlay.Topmost = false;
         _translationOverlay.Topmost = true;
-        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: OCR done, waiting for local model.");
+        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: OCR done, waiting for Chrome translator.");
     }
 
     private void TryChooseTranslationRegion()
@@ -577,46 +594,19 @@ public partial class MainWindow : Window
         _translationOverlay.Activate();
         _translationOverlay.Topmost = false;
         _translationOverlay.Topmost = true;
-        _screenTranslationTimer.Start();
+        if (_viewModel.Settings.ScreenTranslationAutoRefresh)
+        {
+            _screenTranslationTimer.Start();
+        }
         _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: overlay start visible={_translationOverlay.IsVisible}, enabled={_viewModel.Settings.ScreenTranslationEnabled}, region={CurrentTranslationRegion()}.");
         _ = WarmUpThenUpdateScreenTranslationAsync(runId, _screenTranslationCancellation.Token);
     }
 
     private async Task WarmUpThenUpdateScreenTranslationAsync(int runId, CancellationToken cancellationToken)
     {
-        await WarmUpScreenTranslationModelAsync(runId, cancellationToken);
-        if (IsCurrentScreenTranslationRun(runId, cancellationToken))
+        if (_viewModel.Settings.ScreenTranslationAutoRefresh && IsCurrentScreenTranslationRun(runId, cancellationToken))
         {
             await UpdateScreenTranslationAsync(cancellationToken, runId);
-        }
-    }
-
-    private async Task WarmUpScreenTranslationModelAsync(int runId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            if (!IsCurrentScreenTranslationRun(runId, cancellationToken))
-            {
-                return;
-            }
-
-            _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: local model warmup started.");
-            await _screenTranslationService.WarmUpAsync(
-                _viewModel.Settings.ScreenTranslationTargetLanguage,
-                _viewModel.Settings.ScreenTranslationEngine,
-                cancellationToken);
-            if (IsCurrentScreenTranslationRun(runId, cancellationToken))
-            {
-                _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: local model warmup finished.");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: local model warmup cancelled.");
-        }
-        catch (Exception ex)
-        {
-            _viewModel.AddDiagnosticLog("Warn", "ScreenTranslation: local model warmup failed: " + ex.Message);
         }
     }
 
@@ -682,7 +672,6 @@ public partial class MainWindow : Window
                 result = await _screenTranslationService.TranslateRegionAsync(
                     captureRegion,
                     _viewModel.Settings.ScreenTranslationTargetLanguage,
-                    _viewModel.Settings.ScreenTranslationEngine,
                     cancellationToken);
             }
             catch (OperationCanceledException)
@@ -768,6 +757,36 @@ public partial class MainWindow : Window
     private void ChooseTranslationRegionClick(object sender, RoutedEventArgs e)
     {
         ChooseTranslationRegion();
+    }
+
+    private void CaptureScreenTranslationClick(object sender, RoutedEventArgs e)
+    {
+        TryCaptureScreenTranslation();
+    }
+
+    private async void CheckChromeTranslationClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: Chrome self-check requested.");
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+            var ok = await _screenTranslationService.CheckChromeTranslationAsync(
+                _viewModel.Settings.ScreenTranslationTargetLanguage,
+                timeout.Token);
+            _viewModel.AddDiagnosticLog(
+                ok ? "Info" : "Warn",
+                ok
+                    ? "ScreenTranslation: Chrome self-check passed."
+                    : "ScreenTranslation: Chrome self-check did not produce a usable translation.");
+        }
+        catch (OperationCanceledException)
+        {
+            _viewModel.AddDiagnosticLog("Warn", "ScreenTranslation: Chrome self-check timed out.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.AddDiagnosticLog("Warn", "ScreenTranslation: Chrome self-check failed: " + ex.Message);
+        }
     }
 
     private void ChooseTranslationRegion()
@@ -906,15 +925,18 @@ public partial class MainWindow : Window
         if (nCode >= 0 && (wParam.ToInt32() == WmKeydown || wParam.ToInt32() == WmSyskeydown))
         {
             var virtualKey = (uint)Marshal.ReadInt32(lParam);
-            if (MatchesHotkey(_viewModel.Settings.ScreenTranslationHotkey, virtualKey))
+            if (!_registeredHotkeyIds.Contains(HotkeyScreenTranslation)
+                && MatchesHotkey(_viewModel.Settings.ScreenTranslationHotkey, virtualKey))
             {
                 Dispatcher.BeginInvoke(new Action(TryToggleScreenTranslation));
             }
-            else if (MatchesHotkey(_viewModel.Settings.ScreenTranslationCaptureHotkey, virtualKey))
+            else if (!_registeredHotkeyIds.Contains(HotkeyScreenTranslationCapture)
+                && MatchesHotkey(_viewModel.Settings.ScreenTranslationCaptureHotkey, virtualKey))
             {
                 Dispatcher.BeginInvoke(new Action(TryCaptureScreenTranslation));
             }
-            else if (MatchesHotkey(_viewModel.Settings.ScreenTranslationRegionHotkey, virtualKey))
+            else if (!_registeredHotkeyIds.Contains(HotkeyScreenTranslationRegion)
+                && MatchesHotkey(_viewModel.Settings.ScreenTranslationRegionHotkey, virtualKey))
             {
                 Dispatcher.BeginInvoke(new Action(TryChooseTranslationRegion));
             }

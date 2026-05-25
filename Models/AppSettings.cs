@@ -26,11 +26,11 @@ public sealed class AppSettings : INotifyPropertyChanged
     private string _starCitizenStutterHotkey = "Ctrl+Alt+3";
     private string _starCitizenPath = string.Empty;
     private bool _screenTranslationEnabled;
+    private bool _screenTranslationAutoRefresh;
     private string _screenTranslationHotkey = "Ctrl+Alt+T";
     private string _screenTranslationCaptureHotkey = "Ctrl+Alt+R";
     private string _screenTranslationRegionHotkey = "Ctrl+Alt+Shift+R";
     private string _screenTranslationTargetLanguage = "de";
-    private string _screenTranslationEngine = "Auto";
     private double _screenTranslationLeft = 520;
     private double _screenTranslationTop = 220;
     private double _screenTranslationWidth = 700;
@@ -158,6 +158,12 @@ public sealed class AppSettings : INotifyPropertyChanged
         set => SetField(ref _screenTranslationEnabled, value);
     }
 
+    public bool ScreenTranslationAutoRefresh
+    {
+        get => _screenTranslationAutoRefresh;
+        set => SetField(ref _screenTranslationAutoRefresh, value);
+    }
+
     public string ScreenTranslationHotkey
     {
         get => _screenTranslationHotkey;
@@ -180,12 +186,6 @@ public sealed class AppSettings : INotifyPropertyChanged
     {
         get => _screenTranslationTargetLanguage;
         set => SetField(ref _screenTranslationTargetLanguage, string.IsNullOrWhiteSpace(value) ? "de" : value.Trim());
-    }
-
-    public string ScreenTranslationEngine
-    {
-        get => _screenTranslationEngine;
-        set => SetField(ref _screenTranslationEngine, NormalizeTranslationEngine(value));
     }
 
     public double ScreenTranslationLeft
@@ -245,18 +245,4 @@ public sealed class AppSettings : INotifyPropertyChanged
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
     }
 
-    private static string NormalizeTranslationEngine(string? value)
-    {
-        return value?.Trim().ToLowerInvariant() switch
-        {
-            "auto" => "Auto",
-            "automatic" => "Auto",
-            "automatisch" => "Auto",
-            "directml" => "DirectML",
-            "gpu" => "DirectML",
-            "gpu / directml" => "DirectML",
-            "cpu" => "CPU",
-            _ => "Auto"
-        };
-    }
 }

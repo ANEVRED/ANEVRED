@@ -652,6 +652,8 @@
                                 <Separator Margin="0,12,0,12"/>
                                 <TextBlock Text="{Binding L[ScreenTranslation]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <CheckBox Content="{Binding L[ScreenTranslationEnabled]}" IsChecked="{Binding Settings.ScreenTranslationEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Content="{Binding L[ScreenTranslationAutoRefresh]}" IsChecked="{Binding Settings.ScreenTranslationAutoRefresh, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding L[TranslationProviderChromeSelected]}" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="130"/>
@@ -696,18 +698,11 @@
                                     </ComboBox>
                                     <Button Grid.Column="2" Content="{Binding L[ChooseScreenRegion]}" Click="ChooseTranslationRegionClick"/>
                                 </Grid>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="130"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding L[TranslationEngine]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                    <ComboBox Grid.Column="1" SelectedValue="{Binding Settings.ScreenTranslationEngine, Mode=TwoWay}" SelectedValuePath="Tag">
-                                        <ComboBoxItem Content="{Binding L[TranslationEngineAuto]}" Tag="Auto"/>
-                                        <ComboBoxItem Content="{Binding L[TranslationEngineCpu]}" Tag="CPU"/>
-                                        <ComboBoxItem Content="{Binding L[TranslationEngineDirectMl]}" Tag="DirectML"/>
-                                    </ComboBox>
-                                </Grid>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <Button Content="{Binding L[TranslateNow]}" Click="CaptureScreenTranslationClick" MinWidth="150" Margin="0,0,8,0"/>
+                                    <Button Content="{Binding L[CheckChromeTranslation]}" Click="CheckChromeTranslationClick" MinWidth="150"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding L[ChromePrivacyNotice]}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                                 <TextBlock Text="{Binding L[ScreenTranslationHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>

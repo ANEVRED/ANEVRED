@@ -23,7 +23,7 @@
   "TranslationEngineAuto": "Автоматически",
   "TranslationEngineCpu": "CPU",
   "TranslationEngineDirectMl": "GPU / DirectML",
-  "ScreenTranslationHint": "Локально и click-through: мышь и клики остаются в игре. OCR/перевод не использует облако.",
+  "ScreenTranslationHint": "Ручной режим: оставьте автообновление выключенным и нажимайте клавишу захвата, когда нужен новый перевод. Перевод выполняется через Chrome, если Chrome поддерживает встроенный Translator API.",
   "Ram": "RAM",
   "Commit": "Commit",
   "Cpu": "CPU",
@@ -88,8 +88,8 @@
   "LogPowerPlanFailed": "Не удалось изменить план питания: powercfg {0}",
   "LogExported": "Журнал экспортирован: {0}",
   "LogMonitoringFailed": "Ошибка мониторинга: {0}",
-  "LogAutostartFailed": "Не удалось изменить автозапуск: {0}"
-  ,"StatusProtected": "Защищен",
+  "LogAutostartFailed": "Не удалось изменить автозапуск: {0}",
+  "StatusProtected": "Защищен",
   "StatusSystem": "Система",
   "StatusBackground": "Фон",
   "StatusForeground": "Передний план",
@@ -239,5 +239,11 @@
   "LogMemoryCompressionDisableRequested": "Запрошено отключение Memory Compression. Нужны права администратора; полный эффект может потребовать перезагрузки.",
   "LogMemoryCompressionEnableRequested": "Запрошено включение Memory Compression. Нужны права администратора; полный эффект может потребовать перезагрузки.",
   "LogMemoryCompressionAdminCanceled": "Изменение Memory Compression отменено или отклонено без прав администратора.",
-  "LogMemoryCompressionFailed": "Не удалось изменить Memory Compression: {0}"
+  "LogMemoryCompressionFailed": "Не удалось изменить Memory Compression: {0}",
+  "ScreenTranslationAutoRefresh": "Автоматически обновлять перевод",
+  "TranslationProvider": "Провайдер",
+  "TranslateNow": "Перевести сейчас",
+  "TranslationProviderChromeSelected": "Перевод через Chrome активен. API-ключ не нужен.",
+  "CheckChromeTranslation": "Check Chrome",
+  "ChromePrivacyNotice": "Chrome Translator может отправлять распознанный текст через сервисы перевода Chrome, в зависимости от поддержки Chrome и доступности языков."
 }

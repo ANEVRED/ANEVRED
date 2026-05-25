@@ -23,7 +23,7 @@
   "TranslationEngineAuto": "Automatisch",
   "TranslationEngineCpu": "CPU",
   "TranslationEngineDirectMl": "GPU / DirectML",
-  "ScreenTranslationHint": "Lokal und click-through: Maus und Klicks gehen weiter ins Spiel. OCR/Übersetzung nutzt keine Cloud.",
+  "ScreenTranslationHint": "Manueller Modus: Auto-Aktualisierung aus lassen und bei Bedarf den Erfassungs-Hotkey druecken. Die Uebersetzung laeuft ueber Chrome, wenn Chrome seine eingebaute Translator-API unterstuetzt.",
   "Ram": "RAM",
   "Commit": "Commit",
   "Cpu": "CPU",
@@ -88,8 +88,8 @@
   "LogPowerPlanFailed": "Energieprofil konnte nicht geändert werden: powercfg {0}",
   "LogExported": "Logs exportiert: {0}",
   "LogMonitoringFailed": "Monitoring fehlgeschlagen: {0}",
-  "LogAutostartFailed": "Autostart konnte nicht geändert werden: {0}"
-  ,"StatusProtected": "Geschützt",
+  "LogAutostartFailed": "Autostart konnte nicht geändert werden: {0}",
+  "StatusProtected": "Geschützt",
   "StatusSystem": "System",
   "StatusBackground": "Hintergrund",
   "StatusForeground": "Vordergrund",
@@ -239,5 +239,11 @@
   "LogMemoryCompressionDisableRequested": "Memory Compression deaktivieren angefordert. Admin-Bestätigung nötig; vollständige Wirkung ggf. erst nach Neustart.",
   "LogMemoryCompressionEnableRequested": "Memory Compression aktivieren angefordert. Admin-Bestätigung nötig; vollständige Wirkung ggf. erst nach Neustart.",
   "LogMemoryCompressionAdminCanceled": "Memory-Compression-Änderung abgebrochen oder ohne Admin-Rechte verweigert.",
-  "LogMemoryCompressionFailed": "Memory-Compression-Änderung fehlgeschlagen: {0}"
+  "LogMemoryCompressionFailed": "Memory-Compression-Änderung fehlgeschlagen: {0}",
+  "ScreenTranslationAutoRefresh": "Übersetzung automatisch aktualisieren",
+  "TranslationProvider": "Anbieter",
+  "TranslateNow": "Jetzt uebersetzen",
+  "CheckChromeTranslation": "Chrome pruefen",
+  "TranslationProviderChromeSelected": "Chrome-Uebersetzung ist aktiv. Kein API-Key noetig.",
+  "ChromePrivacyNotice": "Chrome Translator kann erkannten Text ueber Chrome-Uebersetzungsdienste senden, je nach Chrome-Unterstuetzung und Sprachverfuegbarkeit."
 }
