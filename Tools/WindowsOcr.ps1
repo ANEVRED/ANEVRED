@@ -2,7 +2,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ImagePath,
 
-    [string]$LanguageTag = "en-US"
+    [string]$LanguageTag = "en-US",
+
+    [switch]$Json
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,22 +53,49 @@ if ($null -eq $engine) {
 }
 
 $result = Wait-WinRtOperation ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
-$lines = New-Object System.Collections.Generic.List[string]
+$lineItems = New-Object System.Collections.Generic.List[object]
+$textLines = New-Object System.Collections.Generic.List[string]
+
 foreach ($line in $result.Lines) {
     $words = @()
+    $left = [double]::PositiveInfinity
+    $top = [double]::PositiveInfinity
+    $right = 0.0
+    $bottom = 0.0
+
     foreach ($word in $line.Words) {
-        if (-not [string]::IsNullOrWhiteSpace($word.Text)) {
-            $words += $word.Text
+        if ([string]::IsNullOrWhiteSpace($word.Text)) {
+            continue
         }
+
+        $words += $word.Text
+        $rect = $word.BoundingRect
+        $left = [Math]::Min($left, [double]$rect.X)
+        $top = [Math]::Min($top, [double]$rect.Y)
+        $right = [Math]::Max($right, [double]($rect.X + $rect.Width))
+        $bottom = [Math]::Max($bottom, [double]($rect.Y + $rect.Height))
     }
 
     if ($words.Count -gt 0) {
-        $lines.Add(($words -join " "))
+        $text = ($words -join " ")
+        $textLines.Add($text)
+        $lineItems.Add([pscustomobject]@{
+            text = $text
+            left = $left
+            top = $top
+            width = [Math]::Max(1.0, $right - $left)
+            height = [Math]::Max(1.0, $bottom - $top)
+        })
     }
 }
 
-if ($lines.Count -gt 0) {
-    $lines -join [Environment]::NewLine
+if ($Json) {
+    [pscustomobject]@{
+        text = if ($textLines.Count -gt 0) { $textLines -join [Environment]::NewLine } else { $result.Text }
+        lines = $lineItems
+    } | ConvertTo-Json -Depth 5 -Compress
+} elseif ($textLines.Count -gt 0) {
+    $textLines -join [Environment]::NewLine
 } else {
     $result.Text
 }

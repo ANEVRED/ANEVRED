@@ -45,9 +45,11 @@ public partial class MainWindow : Window
     private bool _isScreenTranslationRunning;
     private int _screenTranslationRunId;
     private readonly HashSet<int> _registeredHotkeyIds = [];
+    private readonly Dictionary<int, DateTime> _lastHotkeyDispatch = [];
     private IntPtr _keyboardHook;
     private DateTime _lastTranslationToggle = DateTime.MinValue;
     private DateTime _lastTranslationCapture = DateTime.MinValue;
+    private const int HotkeyDispatchDebounceMs = 350;
 
     public MainWindow()
     {
@@ -274,7 +276,22 @@ public partial class MainWindow : Window
         }
 
         handled = true;
-        switch (wParam.ToInt32())
+        DispatchHotkey(wParam.ToInt32());
+
+        return IntPtr.Zero;
+    }
+
+    private void DispatchHotkey(int hotkeyId)
+    {
+        var now = DateTime.UtcNow;
+        if (_lastHotkeyDispatch.TryGetValue(hotkeyId, out var previous)
+            && (now - previous).TotalMilliseconds < HotkeyDispatchDebounceMs)
+        {
+            return;
+        }
+
+        _lastHotkeyDispatch[hotkeyId] = now;
+        switch (hotkeyId)
         {
             case HotkeyServerChange:
                 _viewModel.MarkServerChangeCommand.Execute(null);
@@ -295,8 +312,6 @@ public partial class MainWindow : Window
                 TryChooseTranslationRegion();
                 break;
         }
-
-        return IntPtr.Zero;
     }
 
     private void RegisterConfiguredHotkey(int id, string hotkeyText, List<string> registered, List<string> failed)
@@ -662,8 +677,16 @@ public partial class MainWindow : Window
 
             try
             {
+                // Hide the overlay completely during capture. Opacity=0 is not enough on some
+                // systems because the transparent/layered WPF window can still end up in the
+                // captured frame and Windows OCR then sees an empty/dimmed rectangle.
                 _translationOverlay.SetCaptureMode(true);
-                await Task.Delay(80);
+                if (wasVisible)
+                {
+                    _translationOverlay.Hide();
+                }
+
+                await Task.Delay(350, cancellationToken);
                 if (!IsCurrentScreenTranslationRun(activeRunId, cancellationToken))
                 {
                     return;
@@ -700,8 +723,8 @@ public partial class MainWindow : Window
 
                     _translationOverlay.SetRegion(region);
                     _translationOverlay.SetCaptureMode(false);
-                    _translationOverlay.Topmost = false;
-                    _translationOverlay.Topmost = true;
+                    // Do not toggle Topmost here. On one-monitor setups this steals focus and can
+                    // bring the overlay/tool window into the selected capture area.
                     _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: overlay refreshed visible={_translationOverlay.IsVisible}.");
                 }
             }
@@ -711,8 +734,8 @@ public partial class MainWindow : Window
                 return;
             }
 
-            _translationOverlay.SetText(result.TranslatedText, result.Status);
-            _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: update end visible={_translationOverlay.IsVisible}, textChars={result.TranslatedText.Length}, status={result.Status}");
+            _translationOverlay.SetStructuredText(result.Segments, result.TranslatedText, result.Status);
+            _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: update end visible={_translationOverlay.IsVisible}, textChars={result.TranslatedText.Length}, segments={result.Segments.Count}, status={result.Status}");
         }
         catch (Exception ex)
         {
@@ -792,16 +815,40 @@ public partial class MainWindow : Window
     private void ChooseTranslationRegion()
     {
         var wasEnabled = _viewModel.Settings.ScreenTranslationEnabled;
+        var mainWasVisible = IsVisible;
+        var previousWindowState = WindowState;
         _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: choose region start, wasEnabled={wasEnabled}.");
         StopScreenTranslation();
-        var selector = new RegionSelectionWindow { Owner = this };
-        if (selector.ShowDialog() == true && selector.SelectedRegion is { } region)
+
+        // On a single monitor the tool window itself can cover the area the user wants to select.
+        // Hide it while the selection overlay is active and do not set it as Owner, otherwise WPF
+        // keeps bringing the owner/tool window back to the foreground.
+        if (mainWasVisible)
         {
-            _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: region selected {region}.");
-            _viewModel.Settings.ScreenTranslationLeft = region.Left;
-            _viewModel.Settings.ScreenTranslationTop = region.Top;
-            _viewModel.Settings.ScreenTranslationWidth = region.Width;
-            _viewModel.Settings.ScreenTranslationHeight = region.Height;
+            Hide();
+        }
+
+        try
+        {
+            var selector = new RegionSelectionWindow();
+            if (selector.ShowDialog() == true && selector.SelectedRegion is { } region)
+            {
+                _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: region selected {region}.");
+                _viewModel.Settings.ScreenTranslationLeft = region.Left;
+                _viewModel.Settings.ScreenTranslationTop = region.Top;
+                _viewModel.Settings.ScreenTranslationWidth = region.Width;
+                _viewModel.Settings.ScreenTranslationHeight = region.Height;
+            }
+        }
+        finally
+        {
+            if (mainWasVisible)
+            {
+                Show();
+                WindowState = previousWindowState;
+                // Do not Activate() here. On a single monitor this brought the tool window
+                // back over the selected target immediately after region selection.
+            }
         }
 
         if (wasEnabled)
@@ -907,6 +954,15 @@ public partial class MainWindow : Window
         }
 
         _keyboardHook = SetWindowsHookEx(WhKeyboardLl, _keyboardProc, IntPtr.Zero, 0);
+        if (_keyboardHook == IntPtr.Zero)
+        {
+            var error = Marshal.GetLastWin32Error();
+            _viewModel.AddDiagnosticLog("Warn", $"Low-level keyboard hook could not be installed. Win32 {error}. Run ANEVRED as administrator if the game runs elevated.");
+        }
+        else
+        {
+            _viewModel.AddDiagnosticLog("Info", "Low-level keyboard hook installed for in-game hotkeys.");
+        }
     }
 
     private void UninstallKeyboardHook()
@@ -925,24 +981,54 @@ public partial class MainWindow : Window
         if (nCode >= 0 && (wParam.ToInt32() == WmKeydown || wParam.ToInt32() == WmSyskeydown))
         {
             var virtualKey = (uint)Marshal.ReadInt32(lParam);
-            if (!_registeredHotkeyIds.Contains(HotkeyScreenTranslation)
-                && MatchesHotkey(_viewModel.Settings.ScreenTranslationHotkey, virtualKey))
+            var hotkeyId = ResolveHookHotkey(virtualKey);
+            if (hotkeyId != 0)
             {
-                Dispatcher.BeginInvoke(new Action(TryToggleScreenTranslation));
-            }
-            else if (!_registeredHotkeyIds.Contains(HotkeyScreenTranslationCapture)
-                && MatchesHotkey(_viewModel.Settings.ScreenTranslationCaptureHotkey, virtualKey))
-            {
-                Dispatcher.BeginInvoke(new Action(TryCaptureScreenTranslation));
-            }
-            else if (!_registeredHotkeyIds.Contains(HotkeyScreenTranslationRegion)
-                && MatchesHotkey(_viewModel.Settings.ScreenTranslationRegionHotkey, virtualKey))
-            {
-                Dispatcher.BeginInvoke(new Action(TryChooseTranslationRegion));
+                Dispatcher.BeginInvoke(new Action(() => DispatchHotkey(hotkeyId)));
             }
         }
 
         return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+    }
+
+    private int ResolveHookHotkey(uint virtualKey)
+    {
+        if (MatchesHotkey(_viewModel.Settings.ScreenTranslationHotkey, virtualKey))
+        {
+            return HotkeyScreenTranslation;
+        }
+
+        if (MatchesHotkey(_viewModel.Settings.ScreenTranslationCaptureHotkey, virtualKey))
+        {
+            return HotkeyScreenTranslationCapture;
+        }
+
+        if (MatchesHotkey(_viewModel.Settings.ScreenTranslationRegionHotkey, virtualKey))
+        {
+            return HotkeyScreenTranslationRegion;
+        }
+
+        if (!_viewModel.Settings.StarCitizenHotkeysEnabled)
+        {
+            return 0;
+        }
+
+        if (MatchesHotkey(_viewModel.Settings.StarCitizenServerChangeHotkey, virtualKey))
+        {
+            return HotkeyServerChange;
+        }
+
+        if (MatchesHotkey(_viewModel.Settings.StarCitizenRespawnHotkey, virtualKey))
+        {
+            return HotkeyRespawn;
+        }
+
+        if (MatchesHotkey(_viewModel.Settings.StarCitizenStutterHotkey, virtualKey))
+        {
+            return HotkeyStutter;
+        }
+
+        return 0;
     }
 
     private static bool MatchesHotkey(string hotkeyText, uint virtualKey)

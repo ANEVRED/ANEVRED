@@ -7,7 +7,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize">
-    <Canvas>
+    <Canvas x:Name="RootCanvas">
         <Border x:Name="RegionFrame"
                 BorderBrush="#77A5D8FF"
                 BorderThickness="2"
@@ -28,5 +28,6 @@
                            LineHeight="19"/>
             </ScrollViewer>
         </Border>
+        <Canvas x:Name="SegmentCanvas" IsHitTestVisible="False"/>
     </Canvas>
 </Window>
