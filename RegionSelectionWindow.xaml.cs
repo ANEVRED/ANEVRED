@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Shapes;
 
-namespace ZestResourceOptimizer;
+namespace ANEVRED;
 
 public partial class RegionSelectionWindow : Window
 {

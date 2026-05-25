@@ -8,7 +8,7 @@ using MediaColor = System.Windows.Media.Color;
 using MediaPen = System.Windows.Media.Pen;
 using WpfPoint = System.Windows.Point;
 
-namespace ZestResourceOptimizer.Controls;
+namespace ANEVRED.Controls;
 
 public sealed class HistoryGraphControl : FrameworkElement
 {

@@ -1,6 +1,9 @@
 {
   "AppTitle": "ANEVRED",
-  "AppSubtitle": "Safe live monitoring and gentle RAM/CPU optimization",
+  "AppSubtitle": "Safe live monitoring, visual recognition and gentle RAM/CPU optimization",
+  "AppExpansion": "Adaptive Neural Enhanced Visual Recognition Engine Daemon",
+  "AppDescription": "ANEVRED stands for Adaptive Neural Enhanced Visual Recognition Engine Daemon: local performance analysis, safe system actions and visual recognition for monitoring and live translation.",
+  "AppInfo": "Info",
   "Dashboard": "Dashboard",
   "ProcessList": "Processes",
   "ProcessSelection": "Selected process",
@@ -55,6 +58,9 @@
   "AddRule": "Add rule",
   "RemoveRule": "Remove rule",
   "Profile": "Profile",
+  "Session": "Session",
+  "Auto": "Auto",
+  "Learning": "Learning",
   "RamThreshold": "RAM threshold",
   "CpuThreshold": "CPU threshold",
   "Language": "Language",
@@ -245,5 +251,10 @@
   "TranslateNow": "Translate now",
   "CheckChromeTranslation": "Check Chrome",
   "TranslationProviderChromeSelected": "Chrome translation is active. No API key is needed.",
-  "ChromePrivacyNotice": "Chrome Translator may send recognized text through Chrome translation services depending on Chrome support and language availability."
+  "ChromePrivacyNotice": "Chrome Translator may send recognized text through Chrome translation services depending on Chrome support and language availability.",
+  "ToolDescription": "Tool description",
+  "ToolDescriptionText": "ANEVRED monitors local system load, processes, RAM, VRAM, frametime and Star Citizen sessions. Optimizations are intentionally gentle: protected, system, security and anti-cheat processes are left untouched.",
+  "LicensesAndNotices": "Licenses and notices",
+  "ChromeLicenseNotice": "ANEVRED does not bundle Google Chrome. Live translation can use a locally installed Chrome through its built-in Translator API. Chrome and Chrome Translator are Google products; usage and data handling follow the Google and Chrome terms as well as the local Chrome settings.",
+  "ThirdPartyNotice": "Windows, Chrome and other product names belong to their respective rights holders. ANEVRED stores its settings locally and uses normal Windows APIs."
 }

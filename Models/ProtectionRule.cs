@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace ZestResourceOptimizer.Models;
+namespace ANEVRED.Models;
 
 public sealed class ProtectionRule : INotifyPropertyChanged
 {

@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class MonitoringService : IDisposable
 {

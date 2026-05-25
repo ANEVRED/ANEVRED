@@ -1,6 +1,6 @@
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 internal sealed class PdhCpuSampler : IDisposable
 {

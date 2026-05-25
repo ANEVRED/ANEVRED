@@ -5,12 +5,12 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 using Forms = System.Windows.Forms;
-using ZestResourceOptimizer.Services;
-using ZestResourceOptimizer.ViewModels;
+using ANEVRED.Services;
+using ANEVRED.ViewModels;
 
-namespace ZestResourceOptimizer;
+namespace ANEVRED;
 
 public partial class MainWindow : Window
 {
@@ -101,6 +101,10 @@ public partial class MainWindow : Window
 
     private void ApplyLocalizedColumnHeaders()
     {
+        DashboardProcessColumn.Header = _viewModel.L["Process"];
+        DashboardPriorityColumn.Header = _viewModel.L["Priority"];
+        DashboardAiScoreColumn.Header = _viewModel.L["AiScore"];
+
         ProcessColumn.Header = _viewModel.L["Process"];
         PidColumn.Header = _viewModel.L["Pid"];
         ProcessCpuColumn.Header = _viewModel.L["Cpu"];
@@ -138,6 +142,11 @@ public partial class MainWindow : Window
             SetBrush("BorderBrushSoft", "#CDD6E0");
             SetBrush("GraphFillBrush", "#F8FAFC");
             SetBrush("TableHeaderBrush", "#E2EAF4");
+            SetBrush("FocusRingBrush", "#2563EB");
+            SetBrush("DisabledButtonBackgroundBrush", "#E8EEF5");
+            SetBrush("ScrollBarTrackBrush", "#E7EDF4");
+            SetBrush("ScrollBarThumbBrush", "#A9B8C8");
+            SetBrush("ScrollBarThumbHoverBrush", "#7F93AA");
             SetBrush("AccentBrush", "#3B82F6");
             SetBrush("RamAccentBrush", "#22C55E");
             SetBrush("CpuAccentBrush", "#F59E0B");
@@ -159,6 +168,11 @@ public partial class MainWindow : Window
             SetBrush("BorderBrushSoft", "#263448");
             SetBrush("GraphFillBrush", "#0E1622");
             SetBrush("TableHeaderBrush", "#182437");
+            SetBrush("FocusRingBrush", "#60A5FA");
+            SetBrush("DisabledButtonBackgroundBrush", "#101722");
+            SetBrush("ScrollBarTrackBrush", "#0E1622");
+            SetBrush("ScrollBarThumbBrush", "#314157");
+            SetBrush("ScrollBarThumbHoverBrush", "#425A78");
             SetBrush("AccentBrush", "#3B82F6");
             SetBrush("RamAccentBrush", "#22C55E");
             SetBrush("CpuAccentBrush", "#F59E0B");
@@ -579,7 +593,7 @@ public partial class MainWindow : Window
         }
 
         _translationOverlay.SetCaptureMode(false);
-        _translationOverlay.SetText("Uebersetzung laeuft...", string.Empty);
+        _translationOverlay.SetText("Übersetzung läuft...", string.Empty);
         if (!_translationOverlay.IsVisible)
         {
             _translationOverlay.Show();
@@ -604,7 +618,7 @@ public partial class MainWindow : Window
         var runId = ++_screenTranslationRunId;
         _translationOverlay ??= new TranslationOverlayWindow();
         _translationOverlay.SetRegion(CurrentTranslationRegion());
-        _translationOverlay.SetText(string.Empty, "Live-Uebersetzung aktiv.");
+        _translationOverlay.SetText(string.Empty, "Live-Übersetzung aktiv.");
         _translationOverlay.Show();
         _translationOverlay.Activate();
         _translationOverlay.Topmost = false;
@@ -666,7 +680,7 @@ public partial class MainWindow : Window
             var captureRegion = ToCaptureRectangle(region);
             if (captureRegion.Width < 20 || captureRegion.Height < 20)
             {
-                _translationOverlay.SetText(string.Empty, "Uebersetzungsbereich liegt ausserhalb des sichtbaren Bildschirms.");
+                _translationOverlay.SetText(string.Empty, "Übersetzungsbereich liegt außerhalb des sichtbaren Bildschirms.");
                 _viewModel.AddDiagnosticLog("Warn", $"ScreenTranslation: capture region invalid after screen clamp: {captureRegion}.");
                 return;
             }
@@ -1084,4 +1098,3 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int virtualKey);
 }
-

@@ -1,16 +1,21 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <AssemblyName>ANEVRED</AssemblyName>
     <Product>ANEVRED</Product>
     <AssemblyTitle>ANEVRED</AssemblyTitle>
+    <Description>Adaptive Neural Enhanced Visual Recognition Engine Daemon - local performance monitoring, safe optimization and visual recognition support.</Description>
+    <PackageDescription>Adaptive Neural Enhanced Visual Recognition Engine Daemon - local performance monitoring, safe optimization and visual recognition support.</PackageDescription>
+    <RootNamespace>ANEVRED</RootNamespace>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;buildbin\**;buildobj\**;buildtmp\**</DefaultItemExcludes>
+    <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);bin\**;obj\**;buildbin\**;buildobj\**;buildtmp\**</DefaultItemExcludesInProjectFolder>
   </PropertyGroup>
 
   <ItemGroup>

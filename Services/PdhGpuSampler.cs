@@ -2,9 +2,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 internal sealed class PdhGpuSampler : IDisposable
 {

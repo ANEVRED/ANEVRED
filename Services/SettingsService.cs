@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class SettingsService
 {
@@ -18,7 +18,7 @@ public sealed class SettingsService
 
     private string LegacyAppDataDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ZestResourceOptimizer");
+            "ANEVRED");
 
     public string SettingsPath => Path.Combine(AppDataDirectory, "settings.json");
 

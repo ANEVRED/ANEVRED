@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class LocalizationService : INotifyPropertyChanged
 {

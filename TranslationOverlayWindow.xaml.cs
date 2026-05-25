@@ -4,10 +4,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 using Forms = System.Windows.Forms;
 
-namespace ZestResourceOptimizer;
+namespace ANEVRED;
 
 public partial class TranslationOverlayWindow : Window
 {

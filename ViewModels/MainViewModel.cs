@@ -6,10 +6,10 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaColor = System.Windows.Media.Color;
-using ZestResourceOptimizer.Models;
-using ZestResourceOptimizer.Services;
+using ANEVRED.Models;
+using ANEVRED.Services;
 
-namespace ZestResourceOptimizer.ViewModels;
+namespace ANEVRED.ViewModels;
 
 public sealed class MainViewModel : ViewModelBase, IDisposable
 {
@@ -242,6 +242,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsHardwareView));
                 OnPropertyChanged(nameof(IsLogsView));
                 OnPropertyChanged(nameof(IsSettingsView));
+                OnPropertyChanged(nameof(IsInfoView));
             }
         }
     }
@@ -254,6 +255,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public bool IsHardwareView => CurrentView == "Hardware";
     public bool IsLogsView => CurrentView == "Logs";
     public bool IsSettingsView => CurrentView == "Settings";
+    public bool IsInfoView => CurrentView == "Info";
 
     public int SelectedHistoryMinutes
     {
@@ -962,7 +964,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             Nav("StarCitizen", L["StarCitizenHub"], "☆"),
             Nav("Hardware", L["HardwareMonitor"], "▣"),
             Nav("Logs", L["Logs"], "≡"),
-            Nav("Settings", L["Settings"], "⚙")
+            Nav("Settings", L["Settings"], "⚙"),
+            Nav("Info", L["AppInfo"], "i")
         ]);
     }
 

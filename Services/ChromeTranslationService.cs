@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class ChromeTranslationService : IDisposable
 {

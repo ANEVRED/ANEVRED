@@ -1,6 +1,9 @@
 {
   "AppTitle": "ANEVRED",
-  "AppSubtitle": "Безопасный мониторинг и мягкая оптимизация RAM и CPU в реальном времени",
+  "AppSubtitle": "Безопасный мониторинг, визуальное распознавание и мягкая оптимизация RAM и CPU в реальном времени",
+  "AppExpansion": "Adaptive Neural Enhanced Visual Recognition Engine Daemon",
+  "AppDescription": "ANEVRED означает Adaptive Neural Enhanced Visual Recognition Engine Daemon: локальный анализ производительности, безопасные системные действия и визуальное распознавание для мониторинга и live-перевода.",
+  "AppInfo": "Инфо",
   "Dashboard": "Панель",
   "ProcessList": "Процессы",
   "ProcessSelection": "Выбранный процесс",
@@ -55,6 +58,9 @@
   "AddRule": "Добавить правило",
   "RemoveRule": "Удалить правило",
   "Profile": "Профиль",
+  "Session": "Сессия",
+  "Auto": "Авто",
+  "Learning": "Обучение",
   "RamThreshold": "Порог RAM",
   "CpuThreshold": "Порог CPU",
   "Language": "Язык",
@@ -245,5 +251,10 @@
   "TranslateNow": "Перевести сейчас",
   "TranslationProviderChromeSelected": "Перевод через Chrome активен. API-ключ не нужен.",
   "CheckChromeTranslation": "Check Chrome",
-  "ChromePrivacyNotice": "Chrome Translator может отправлять распознанный текст через сервисы перевода Chrome, в зависимости от поддержки Chrome и доступности языков."
+  "ChromePrivacyNotice": "Chrome Translator может отправлять распознанный текст через сервисы перевода Chrome, в зависимости от поддержки Chrome и доступности языков.",
+  "ToolDescription": "Описание инструмента",
+  "ToolDescriptionText": "ANEVRED отслеживает локальную нагрузку системы, процессы, RAM, VRAM, frametime и сессии Star Citizen. Оптимизации намеренно щадящие: защищенные, системные, защитные и anti-cheat процессы не изменяются.",
+  "LicensesAndNotices": "Лицензии и уведомления",
+  "ChromeLicenseNotice": "ANEVRED не включает Google Chrome в поставку. Живой перевод может использовать локально установленный Chrome через встроенный Translator API. Chrome и Chrome Translator являются продуктами Google; использование и обработка данных регулируются условиями Google и Chrome, а также локальными настройками Chrome.",
+  "ThirdPartyNotice": "Windows, Chrome и другие названия продуктов принадлежат соответствующим правообладателям. ANEVRED хранит настройки локально и использует обычные Windows API."
 }

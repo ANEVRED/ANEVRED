@@ -1,4 +1,4 @@
-namespace ZestResourceOptimizer.Models;
+namespace ANEVRED.Models;
 
 public sealed class StarCitizenEventView
 {

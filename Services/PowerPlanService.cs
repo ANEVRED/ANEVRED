@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class PowerPlanService
 {

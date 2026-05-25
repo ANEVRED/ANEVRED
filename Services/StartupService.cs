@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class StartupService
 {

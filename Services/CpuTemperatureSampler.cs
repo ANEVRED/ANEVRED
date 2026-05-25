@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 internal sealed class CpuTemperatureSampler
 {

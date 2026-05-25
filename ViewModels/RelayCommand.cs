@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace ZestResourceOptimizer.ViewModels;
+namespace ANEVRED.ViewModels;
 
 public sealed class RelayCommand : ICommand
 {

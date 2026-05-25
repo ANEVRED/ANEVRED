@@ -1,7 +1,7 @@
 using System.IO;
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class StarCitizenLogService
 {

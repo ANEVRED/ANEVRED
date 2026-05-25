@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace ZestResourceOptimizer.ViewModels;
+namespace ANEVRED.ViewModels;
 
 public abstract class ViewModelBase : INotifyPropertyChanged
 {

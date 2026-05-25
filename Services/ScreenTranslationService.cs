@@ -8,9 +8,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using ZestResourceOptimizer.Models;
+using ANEVRED.Models;
 
-namespace ZestResourceOptimizer.Services;
+namespace ANEVRED.Services;
 
 public sealed class ScreenTranslationService : IDisposable
 {
@@ -1004,8 +1004,8 @@ public sealed class ScreenTranslationService : IDisposable
         var status = string.IsNullOrWhiteSpace(originalText)
             ? "OCR aktiv, aber kein Text erkannt."
             : hasTranslation
-                ? $"Nach {targetLanguage} uebersetzt" + (shortened ? " (gekuerzt)." : cached ? " (unveraendert)." : ".")
-                : $"OCR aktiv. Chrome-Uebersetzer ist nicht bereit, Originaltext wird angezeigt.";
+                ? $"Nach {targetLanguage} übersetzt" + (shortened ? " (gekürzt)." : cached ? " (unverändert)." : ".")
+                : $"OCR aktiv. Chrome-Übersetzer ist nicht bereit, Originaltext wird angezeigt.";
 
         return new ScreenTranslationResult
         {
@@ -1203,5 +1203,3 @@ public sealed class ScreenTranslationService : IDisposable
         _chromeTranslation.Dispose();
     }
 }
-
-

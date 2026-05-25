@@ -1,9 +1,9 @@
-<Window x:Class="ZestResourceOptimizer.MainWindow"
+<Window x:Class="ANEVRED.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:controls="clr-namespace:ZestResourceOptimizer.Controls"
+        xmlns:controls="clr-namespace:ANEVRED.Controls"
         mc:Ignorable="d"
         Title="ANEVRED Optimizer" Height="820" Width="1440" MinHeight="700" MinWidth="1180">
     <Grid Background="{DynamicResource WindowBackgroundBrush}">
@@ -60,14 +60,16 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Border Style="{StaticResource PanelCardStyle}" Padding="16" Margin="0,0,0,10">
-                    <StackPanel>
-                        <TextBlock Text="{Binding L[SystemStatus]}" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                        <TextBlock Text="{Binding PerformanceStateText}" FontSize="21" FontWeight="SemiBold" Foreground="{Binding PerformanceStateBrush}" Margin="0,10,0,2"/>
-                        <TextBlock Text="{Binding L[PerformanceScore]}" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                        <TextBlock Text="{Binding PerformanceScoreText, StringFormat={}{0}/100}" FontSize="18" Margin="0,10,0,0"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                    <Border Style="{StaticResource PanelCardStyle}" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="{Binding L[SystemStatus]}" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <TextBlock Text="{Binding PerformanceStateText}" FontSize="21" FontWeight="SemiBold" Foreground="{Binding PerformanceStateBrush}" Margin="0,10,0,2"/>
+                            <TextBlock Text="{Binding L[PerformanceScore]}" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <TextBlock Text="{Binding PerformanceScoreText, StringFormat={}{0}/100}" FontSize="18" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
                 <Border Grid.Row="1" Style="{StaticResource PanelCardStyle}" Padding="10">
                     <ItemsControl ItemsSource="{Binding NavigationItems}">
@@ -89,7 +91,7 @@
                     <ComboBox ItemsSource="{Binding SupportedLanguages}" DisplayMemberPath="DisplayName" SelectedValuePath="Code" SelectedValue="{Binding CurrentLanguage}" Margin="0,0,0,12"/>
                     <TextBlock Text="{Binding L[Theme]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
                     <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding ThemeMode}" Margin="0,0,0,14"/>
-                    <TextBlock Text="v0.3.0" Foreground="{DynamicResource DisabledTextBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="v0.3.0" Foreground="{DynamicResource DisabledTextBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -230,14 +232,14 @@
                                         </ContextMenu>
                                     </DataGrid.ContextMenu>
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Process" Binding="{Binding Name}" Width="2*"/>
+                                        <DataGridTextColumn x:Name="DashboardProcessColumn" Header="Process" Binding="{Binding Name}" Width="2*"/>
                                         <DataGridTextColumn Header="CPU %" Binding="{Binding CpuPercent, StringFormat={}{0:0.0}%}" Width="82"/>
                                         <DataGridTextColumn Header="GPU %" Binding="{Binding GpuPercent, StringFormat={}{0:0.0}%}" Width="82"/>
                                         <DataGridTextColumn Header="RAM" Binding="{Binding MemoryMb, StringFormat={}{0:0} MB}" Width="100"/>
                                         <DataGridTextColumn Header="Commit" Binding="{Binding CommitMb, StringFormat={}{0:0} MB}" Width="100"/>
                                         <DataGridTextColumn Header="VRAM" Binding="{Binding VramMb, StringFormat={}{0:0} MB}" Width="100"/>
-                                        <DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="100"/>
-                                        <DataGridTextColumn Header="AI" Binding="{Binding AiScore}" Width="60"/>
+                                        <DataGridTextColumn x:Name="DashboardPriorityColumn" Header="Priority" Binding="{Binding Priority}" Width="100"/>
+                                        <DataGridTextColumn x:Name="DashboardAiScoreColumn" Header="AI" Binding="{Binding AiScore}" Width="60"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
@@ -397,7 +399,11 @@
                         <StackPanel>
                             <TextBlock Text="{Binding L[StarCitizenHub]}" FontSize="24" FontWeight="SemiBold"/>
                             <TextBlock Text="{Binding StarCitizenStatusText}" FontSize="18" Foreground="{DynamicResource RamAccentBrush}" Margin="0,10,0,0"/>
-                            <TextBlock Text="{Binding SessionTimeText, StringFormat={}Session: {0}}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,0"/>
+                            <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,0">
+                                <Run Text="{Binding L[Session], Mode=OneWay}"/>
+                                <Run Text=": "/>
+                                <Run Text="{Binding SessionTimeText, Mode=OneWay}"/>
+                            </TextBlock>
                             <TextBlock Text="{Binding StarCitizenRiskText}" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource CpuAccentBrush}" Margin="0,10,0,0"/>
                             <TextBlock Text="{Binding ProtectedStatusText}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,0"/>
                         </StackPanel>
@@ -527,6 +533,42 @@
                     </Grid>
                 </Border>
             </Grid>
+
+            <ScrollViewer Visibility="{Binding IsInfoView, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="ANEVRED" FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text="{Binding L[AppExpansion]}" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding L[AppDescription]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding L[ToolDescription]}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock Text="{Binding L[ToolDescriptionText]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                <Separator Margin="0,16,0,16"/>
+                                <TextBlock Text="{Binding L[SafetyNote]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding L[FooterNote]}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}" Margin="8,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding L[LicensesAndNotices]}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock Text="{Binding L[ChromeLicenseNotice]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding L[ChromePrivacyNotice]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                                <TextBlock Text="{Binding L[ThirdPartyNotice]}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
 
             <ScrollViewer Visibility="{Binding IsSettingsView, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel>
@@ -800,8 +842,16 @@
                         <TextBlock Text="{Binding L[AutoOptimization]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
                         <CheckBox Content="{Binding L[AutoMode]}" IsChecked="{Binding Settings.AutoModeEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
                         <CheckBox Content="{Binding L[LocalLearning]}" IsChecked="{Binding Settings.LocalLearningEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding AutoOptimizationStatusText, StringFormat={}Auto: {0}}" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                        <TextBlock Text="{Binding LocalLearningStatusText, StringFormat={}Learning: {0}}" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <TextBlock Foreground="{DynamicResource SecondaryTextBrush}">
+                            <Run Text="{Binding L[Auto], Mode=OneWay}"/>
+                            <Run Text=": "/>
+                            <Run Text="{Binding AutoOptimizationStatusText, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Foreground="{DynamicResource SecondaryTextBrush}">
+                            <Run Text="{Binding L[Learning], Mode=OneWay}"/>
+                            <Run Text=": "/>
+                            <Run Text="{Binding LocalLearningStatusText, Mode=OneWay}"/>
+                        </TextBlock>
                         <TextBlock Text="{Binding AutoRamIntervalText, StringFormat={}RAM: {0}}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0"/>
                         <TextBlock Text="{Binding AutoCpuIntervalText, StringFormat={}CPU: {0}}" Foreground="{DynamicResource SecondaryTextBrush}"/>
                     </StackPanel>
@@ -812,9 +862,13 @@
         <Border Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="0,1,0,0" Padding="16,0">
             <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}">
                 <Run Text="{Binding StarCitizenStatusText, Mode=OneWay}"/>
-                <Run Text=" | Session "/>
+                <Run Text=" | "/>
+                <Run Text="{Binding L[Session], Mode=OneWay}"/>
+                <Run Text=" "/>
                 <Run Text="{Binding SessionTimeText, Mode=OneWay}"/>
-                <Run Text=" | Profile: "/>
+                <Run Text=" | "/>
+                <Run Text="{Binding L[Profile], Mode=OneWay}"/>
+                <Run Text=": "/>
                 <Run Text="{Binding CurrentProfileText, Mode=OneWay}"/>
                 <Run Text=" | VRAM: "/>
                 <Run Text="{Binding VramPressureText, Mode=OneWay}"/>
