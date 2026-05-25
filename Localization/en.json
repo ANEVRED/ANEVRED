@@ -256,5 +256,10 @@
   "ToolDescriptionText": "ANEVRED monitors local system load, processes, RAM, VRAM, frametime and Star Citizen sessions. Optimizations are intentionally gentle: protected, system, security and anti-cheat processes are left untouched.",
   "LicensesAndNotices": "Licenses and notices",
   "ChromeLicenseNotice": "ANEVRED does not bundle Google Chrome. Live translation can use a locally installed Chrome through its built-in Translator API. Chrome and Chrome Translator are Google products; usage and data handling follow the Google and Chrome terms as well as the local Chrome settings.",
-  "ThirdPartyNotice": "Windows, Chrome and other product names belong to their respective rights holders. ANEVRED stores its settings locally and uses normal Windows APIs."
+  "ThirdPartyNotice": "Windows, Chrome and other product names belong to their respective rights holders. ANEVRED stores its settings locally and uses normal Windows APIs.",
+  "AiInfoTitle": "AI recommendations and local learning",
+  "AiInfoText": "ANEVRED evaluates local measurements such as CPU, RAM, GPU, VRAM and frametime pressure as well as visible background load. Recommendations are created only when a safe, explainable action can be derived, for example freeing RAM, reviewing background load, or checking power settings.",
+  "AiStorageTitle": "What is stored",
+  "AiStorageText": "When local learning is enabled, ANEVRED stores up to 7200 short samples in %LOCALAPPDATA%\\ANEVRED\\learning-history.json. Samples include timestamps, load values, Star Citizen status and up to eight notable process names. In maximum privacy mode, process names are hashed before being stored.",
+  "AiReuseText": "This history is loaded again on the next start and used locally only to classify recurring load patterns more accurately. It is not sent to servers and does not replace user judgment: protected, system, security and anti-cheat processes remain excluded."
 }

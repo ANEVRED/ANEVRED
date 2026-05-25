@@ -256,5 +256,10 @@
   "ToolDescriptionText": "ANEVRED überwacht lokale Systemlast, Prozesse, RAM, VRAM, Frametime und Star-Citizen-Sitzungen. Optimierungen sind bewusst schonend gehalten: geschützte, System-, Sicherheits- und Anti-Cheat-Prozesse bleiben unangetastet.",
   "LicensesAndNotices": "Lizenzen und Hinweise",
   "ChromeLicenseNotice": "ANEVRED bündelt Google Chrome nicht. Die Live-Übersetzung kann einen lokal installierten Chrome über dessen integrierte Translator-API verwenden. Chrome und Chrome Translator sind Produkte von Google; Nutzung und Datenverarbeitung richten sich nach den Google- und Chrome-Bedingungen sowie den lokalen Chrome-Einstellungen.",
-  "ThirdPartyNotice": "Windows-, Chrome- und weitere Produktnamen gehören den jeweiligen Rechteinhabern. ANEVRED speichert seine Einstellungen lokal und nutzt normale Windows-APIs."
+  "ThirdPartyNotice": "Windows-, Chrome- und weitere Produktnamen gehören den jeweiligen Rechteinhabern. ANEVRED speichert seine Einstellungen lokal und nutzt normale Windows-APIs.",
+  "AiInfoTitle": "KI-Empfehlungen und lokales Lernen",
+  "AiInfoText": "ANEVRED bewertet lokale Messwerte wie CPU-, RAM-, GPU-, VRAM- und Frametime-Druck sowie sichtbare Hintergrundlast. Empfehlungen entstehen nur, wenn daraus eine sichere, nachvollziehbare Aktion abgeleitet werden kann, zum Beispiel RAM entlasten, Hintergrundlast prüfen oder Energieeinstellungen überprüfen.",
+  "AiStorageTitle": "Was gespeichert wird",
+  "AiStorageText": "Wenn lokales Lernen aktiv ist, speichert ANEVRED bis zu 7200 kurze Messpunkte in %LOCALAPPDATA%\\ANEVRED\\learning-history.json. Enthalten sind Zeitpunkte, Lastwerte, Star-Citizen-Status und bis zu acht auffällige Prozessnamen. Im maximalen Datenschutzmodus werden Prozessnamen vor dem Speichern gehasht.",
+  "AiReuseText": "Diese Historie wird beim nächsten Start wieder geladen und nur lokal genutzt, um wiederkehrende Lastmuster besser einzuordnen. Sie wird nicht an Server gesendet und ersetzt keine manuelle Entscheidung: geschützte, System-, Sicherheits- und Anti-Cheat-Prozesse bleiben ausgenommen."
 }
