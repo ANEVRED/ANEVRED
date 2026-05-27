@@ -261,5 +261,15 @@
   "AiInfoText": "ANEVRED evaluates local measurements such as CPU, RAM, GPU, VRAM and frametime pressure as well as visible background load. Recommendations are created only when a safe, explainable action can be derived, for example freeing RAM, reviewing background load, or checking power settings.",
   "AiStorageTitle": "What is stored",
   "AiStorageText": "When local learning is enabled, ANEVRED stores up to 7200 short samples in %LOCALAPPDATA%\\ANEVRED\\learning-history.json. Samples include timestamps, load values, Star Citizen status and up to eight notable process names. In maximum privacy mode, process names are hashed before being stored.",
-  "AiReuseText": "This history is loaded again on the next start and used locally only to classify recurring load patterns more accurately. It is not sent to servers and does not replace user judgment: protected, system, security and anti-cheat processes remain excluded."
+  "AiReuseText": "This history is loaded again on the next start and used locally only to classify recurring load patterns more accurately. It is not sent to servers and does not replace user judgment: protected, system, security and anti-cheat processes remain excluded.",
+  "UiDimming": "UI dimming",
+  "UiDimmingEnabled": "Enable full-screen dimming overlay",
+  "UiDimmingAutoTune": "Automatically tune from game image",
+  "UiDimmingHotkey": "Dimming hotkey",
+  "UiDimmingStrength": "Strength",
+  "UiDimmingRed": "Red",
+  "UiDimmingGreen": "Green",
+  "UiDimmingBlue": "Blue",
+  "UiDimmingHint": "Click-through RGB filter for bright scenes. Limited to the game monitor.",
+  "UiDimmingAnalyzeNow": "Tune from image"
 }

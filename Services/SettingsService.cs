@@ -50,6 +50,12 @@ public sealed class SettingsService
             settings.StarCitizenServerChangeHotkey = settings.StarCitizenServerChangeHotkey;
             settings.StarCitizenRespawnHotkey = settings.StarCitizenRespawnHotkey;
             settings.StarCitizenStutterHotkey = settings.StarCitizenStutterHotkey;
+            settings.UiDimmingAutoTuneEnabled = settings.UiDimmingAutoTuneEnabled;
+            settings.UiDimmingHotkey = settings.UiDimmingHotkey;
+            settings.UiDimmingOpacityPercent = settings.UiDimmingOpacityPercent;
+            settings.UiDimmingRed = settings.UiDimmingRed;
+            settings.UiDimmingGreen = settings.UiDimmingGreen;
+            settings.UiDimmingBlue = settings.UiDimmingBlue;
             settings.MainWindowState = settings.MainWindowState;
             settings.MainWindowWidth = settings.MainWindowWidth;
             settings.MainWindowHeight = settings.MainWindowHeight;

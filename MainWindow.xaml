@@ -778,6 +778,65 @@
                                 </StackPanel>
                                 <TextBlock Text="{Binding L[ChromePrivacyNotice]}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
                                 <TextBlock Text="{Binding L[ScreenTranslationHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                <Separator Margin="0,12,0,12"/>
+                                <TextBlock Text="{Binding L[UiDimming]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <CheckBox Content="{Binding L[UiDimmingEnabled]}" IsChecked="{Binding Settings.UiDimmingEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Content="{Binding L[UiDimmingAutoTune]}" IsChecked="{Binding Settings.UiDimmingAutoTuneEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="150"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding L[UiDimmingHotkey]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Settings.UiDimmingHotkey}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    <Button Grid.Column="2" Content="{Binding L[PressHotkeyButton]}" Tag="UiDimming" Click="CaptureHotkeyButtonClick"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="76"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding L[UiDimmingStrength]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="80" Value="{Binding Settings.UiDimmingOpacityPercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding UiDimmingOpacityText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="76"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding L[UiDimmingRed]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Settings.UiDimmingRed, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding UiDimmingRedText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="76"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding L[UiDimmingGreen]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Settings.UiDimmingGreen, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding UiDimmingGreenText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="76"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding L[UiDimmingBlue]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                    <Slider Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Settings.UiDimmingBlue, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding UiDimmingBlueText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <DockPanel Margin="0,2,0,0">
+                                    <Border DockPanel.Dock="Left" Width="42" Height="22" Background="{Binding UiDimmingPreviewBrush}" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="1" CornerRadius="4" Margin="0,0,10,0"/>
+                                    <TextBlock Text="{Binding L[UiDimmingHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <Button Content="{Binding L[UiDimmingAnalyzeNow]}" Click="AnalyzeUiDimmingClick" MinWidth="150" HorizontalAlignment="Left" Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>
                     </Grid>

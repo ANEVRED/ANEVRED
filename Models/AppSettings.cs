@@ -35,6 +35,13 @@ public sealed class AppSettings : INotifyPropertyChanged
     private double _screenTranslationTop = 220;
     private double _screenTranslationWidth = 700;
     private double _screenTranslationHeight = 420;
+    private bool _uiDimmingEnabled;
+    private bool _uiDimmingAutoTuneEnabled;
+    private string _uiDimmingHotkey = "Ctrl+Alt+D";
+    private double _uiDimmingOpacityPercent = 30;
+    private int _uiDimmingRed;
+    private int _uiDimmingGreen;
+    private int _uiDimmingBlue;
     private string _mainWindowState = "Maximized";
     private double _mainWindowLeft = -1;
     private double _mainWindowTop = -1;
@@ -215,6 +222,48 @@ public sealed class AppSettings : INotifyPropertyChanged
     {
         get => _screenTranslationHeight;
         set => SetField(ref _screenTranslationHeight, Math.Clamp(value, 80, 3000));
+    }
+
+    public bool UiDimmingEnabled
+    {
+        get => _uiDimmingEnabled;
+        set => SetField(ref _uiDimmingEnabled, value);
+    }
+
+    public bool UiDimmingAutoTuneEnabled
+    {
+        get => _uiDimmingAutoTuneEnabled;
+        set => SetField(ref _uiDimmingAutoTuneEnabled, value);
+    }
+
+    public string UiDimmingHotkey
+    {
+        get => _uiDimmingHotkey;
+        set => SetField(ref _uiDimmingHotkey, NormalizeHotkey(value, "Ctrl+Alt+D"));
+    }
+
+    public double UiDimmingOpacityPercent
+    {
+        get => _uiDimmingOpacityPercent;
+        set => SetField(ref _uiDimmingOpacityPercent, Math.Clamp(value, 0, 80));
+    }
+
+    public int UiDimmingRed
+    {
+        get => _uiDimmingRed;
+        set => SetField(ref _uiDimmingRed, Math.Clamp(value, 0, 255));
+    }
+
+    public int UiDimmingGreen
+    {
+        get => _uiDimmingGreen;
+        set => SetField(ref _uiDimmingGreen, Math.Clamp(value, 0, 255));
+    }
+
+    public int UiDimmingBlue
+    {
+        get => _uiDimmingBlue;
+        set => SetField(ref _uiDimmingBlue, Math.Clamp(value, 0, 255));
     }
 
     public string MainWindowState

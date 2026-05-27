@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,6 +11,7 @@ using ANEVRED.Models;
 using Forms = System.Windows.Forms;
 using ANEVRED.Services;
 using ANEVRED.ViewModels;
+using Drawing = System.Drawing;
 
 namespace ANEVRED;
 
@@ -25,6 +27,7 @@ public partial class MainWindow : Window
     private const int HotkeyScreenTranslation = 104;
     private const int HotkeyScreenTranslationCapture = 105;
     private const int HotkeyScreenTranslationRegion = 106;
+    private const int HotkeyUiDimming = 107;
     private const uint ModAlt = 0x0001;
     private const uint ModControl = 0x0002;
     private const uint ModNoRepeat = 0x4000;
@@ -35,6 +38,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly Services.ScreenTranslationService _screenTranslationService;
     private readonly System.Windows.Threading.DispatcherTimer _screenTranslationTimer = new();
+    private readonly System.Windows.Threading.DispatcherTimer _uiDimmingAutoTimer = new();
     private readonly LowLevelKeyboardProc _keyboardProc;
     private Forms.NotifyIcon? _notifyIcon;
     private Forms.ContextMenuStrip? _trayMenu;
@@ -51,6 +55,8 @@ public partial class MainWindow : Window
     private DateTime _lastTranslationToggle = DateTime.MinValue;
     private DateTime _lastTranslationCapture = DateTime.MinValue;
     private WindowState _lastNonMinimizedWindowState = WindowState.Maximized;
+    private UiDimmingOverlayWindow? _uiDimmingOverlay;
+    private bool _isUiDimmingAutoTuning;
     private const int HotkeyDispatchDebounceMs = 350;
 
     public MainWindow()
@@ -83,12 +89,19 @@ public partial class MainWindow : Window
         LogsGrid.RowHeight = double.NaN;
         BuildTrayMenu();
         SourceInitialized += OnSourceInitialized;
-        Loaded += (_, _) => RestoreMainWindowPlacement();
+        Loaded += (_, _) =>
+        {
+            RestoreMainWindowPlacement();
+            UpdateUiDimmingAutoTimer();
+            ApplyUiDimmingOverlay();
+        };
         StateChanged += (_, _) => RememberMainWindowPlacement();
         LocationChanged += (_, _) => RememberMainWindowPlacement();
         SizeChanged += (_, _) => RememberMainWindowPlacement();
         _screenTranslationTimer.Interval = TimeSpan.FromSeconds(30);
         _screenTranslationTimer.Tick += async (_, _) => await UpdateScreenTranslationAsync();
+        _uiDimmingAutoTimer.Interval = TimeSpan.FromSeconds(8);
+        _uiDimmingAutoTimer.Tick += (_, _) => AutoTuneUiDimming(measureOriginal: false);
     }
 
     protected override void OnClosing(CancelEventArgs e)
@@ -103,8 +116,10 @@ public partial class MainWindow : Window
         UninstallKeyboardHook();
         _source?.RemoveHook(WndProc);
         _screenTranslationTimer.Stop();
+        _uiDimmingAutoTimer.Stop();
         _screenTranslationService.Dispose();
         _translationOverlay?.Close();
+        _uiDimmingOverlay?.Close();
         _notifyIcon?.Dispose();
         _trayMenu?.Dispose();
         _viewModel.Settings.PropertyChanged -= SettingsPropertyChanged;
@@ -375,6 +390,7 @@ public partial class MainWindow : Window
         RegisterConfiguredHotkey(HotkeyScreenTranslation, _viewModel.Settings.ScreenTranslationHotkey, registered, failed);
         RegisterConfiguredHotkey(HotkeyScreenTranslationCapture, _viewModel.Settings.ScreenTranslationCaptureHotkey, registered, failed);
         RegisterConfiguredHotkey(HotkeyScreenTranslationRegion, _viewModel.Settings.ScreenTranslationRegionHotkey, registered, failed);
+        RegisterConfiguredHotkey(HotkeyUiDimming, _viewModel.Settings.UiDimmingHotkey, registered, failed);
 
         if (!_viewModel.Settings.StarCitizenHotkeysEnabled)
         {
@@ -401,6 +417,7 @@ public partial class MainWindow : Window
         UnregisterHotKey(_windowHandle, HotkeyScreenTranslation);
         UnregisterHotKey(_windowHandle, HotkeyScreenTranslationCapture);
         UnregisterHotKey(_windowHandle, HotkeyScreenTranslationRegion);
+        UnregisterHotKey(_windowHandle, HotkeyUiDimming);
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -445,6 +462,9 @@ public partial class MainWindow : Window
                 break;
             case HotkeyScreenTranslationRegion:
                 TryChooseTranslationRegion();
+                break;
+            case HotkeyUiDimming:
+                ToggleUiDimming();
                 break;
         }
     }
@@ -547,7 +567,8 @@ public partial class MainWindow : Window
             or nameof(AppSettings.StarCitizenStutterHotkey)
             or nameof(AppSettings.ScreenTranslationHotkey)
             or nameof(AppSettings.ScreenTranslationCaptureHotkey)
-            or nameof(AppSettings.ScreenTranslationRegionHotkey))
+            or nameof(AppSettings.ScreenTranslationRegionHotkey)
+            or nameof(AppSettings.UiDimmingHotkey))
         {
             RegisterGlobalHotkeys();
         }
@@ -576,7 +597,292 @@ public partial class MainWindow : Window
             }
         }
 
+        if (e.PropertyName is nameof(AppSettings.UiDimmingEnabled)
+            or nameof(AppSettings.UiDimmingAutoTuneEnabled)
+            or nameof(AppSettings.UiDimmingOpacityPercent)
+            or nameof(AppSettings.UiDimmingRed)
+            or nameof(AppSettings.UiDimmingGreen)
+            or nameof(AppSettings.UiDimmingBlue))
+        {
+            UpdateUiDimmingAutoTimer();
+            ApplyUiDimmingOverlay();
+        }
+
     }
+
+    private void ApplyUiDimmingOverlay()
+    {
+        var settings = _viewModel.Settings;
+        if (!settings.UiDimmingEnabled || settings.UiDimmingOpacityPercent <= 0)
+        {
+            _uiDimmingOverlay?.Hide();
+            return;
+        }
+
+        _uiDimmingOverlay ??= new UiDimmingOverlayWindow();
+        _uiDimmingOverlay.Apply(
+            settings.UiDimmingRed,
+            settings.UiDimmingGreen,
+            settings.UiDimmingBlue,
+            settings.UiDimmingOpacityPercent,
+            ResolveUiDimmingTargetBounds());
+
+        if (!_uiDimmingOverlay.IsVisible)
+        {
+            _uiDimmingOverlay.Show();
+        }
+
+        _uiDimmingOverlay.Topmost = false;
+        _uiDimmingOverlay.Topmost = true;
+    }
+
+    private void UpdateUiDimmingAutoTimer()
+    {
+        if (_viewModel.Settings.UiDimmingEnabled && _viewModel.Settings.UiDimmingAutoTuneEnabled)
+        {
+            if (!_uiDimmingAutoTimer.IsEnabled)
+            {
+                _uiDimmingAutoTimer.Start();
+            }
+
+            AutoTuneUiDimming(measureOriginal: false);
+        }
+        else
+        {
+            _uiDimmingAutoTimer.Stop();
+        }
+    }
+
+    private void AnalyzeUiDimmingClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.Settings.UiDimmingEnabled = true;
+        AutoTuneUiDimming(measureOriginal: true);
+        ApplyUiDimmingOverlay();
+    }
+
+    private void ToggleUiDimming()
+    {
+        _viewModel.Settings.UiDimmingEnabled = !_viewModel.Settings.UiDimmingEnabled;
+        _viewModel.AddDiagnosticLog("Info", $"UI dimming toggled: {(_viewModel.Settings.UiDimmingEnabled ? "on" : "off")}.");
+    }
+
+    private void AutoTuneUiDimming(bool measureOriginal)
+    {
+        if (_isUiDimmingAutoTuning || !_viewModel.Settings.UiDimmingEnabled)
+        {
+            return;
+        }
+
+        _isUiDimmingAutoTuning = true;
+        var wasVisible = _uiDimmingOverlay?.IsVisible == true;
+        try
+        {
+            var targetBounds = ResolveUiDimmingTargetBounds();
+            if (targetBounds.Width <= 0 || targetBounds.Height <= 0)
+            {
+                return;
+            }
+
+            if (measureOriginal && wasVisible)
+            {
+                _uiDimmingOverlay!.Hide();
+                Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+                Thread.Sleep(80);
+            }
+
+            var suggestion = AnalyzeDimmingSuggestion(targetBounds, compensateCurrentOverlay: !measureOriginal && wasVisible);
+            if (!measureOriginal)
+            {
+                suggestion = SmoothDimmingSuggestion(suggestion);
+            }
+
+            ApplyDimmingSuggestion(suggestion);
+            ApplyUiDimmingOverlay();
+            _viewModel.AddDiagnosticLog("Info", $"UI dimming tuned: RGB {suggestion.Red}/{suggestion.Green}/{suggestion.Blue}, {suggestion.OpacityPercent:0}% on {targetBounds.Width}x{targetBounds.Height}.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.AddDiagnosticLog("Warn", "UI dimming auto tune failed: " + ex.Message);
+        }
+        finally
+        {
+            _isUiDimmingAutoTuning = false;
+            if (measureOriginal && wasVisible)
+            {
+                ApplyUiDimmingOverlay();
+            }
+        }
+    }
+
+    private void ApplyDimmingSuggestion(DimmingSuggestion suggestion)
+    {
+        var settings = _viewModel.Settings;
+        settings.UiDimmingRed = suggestion.Red;
+        settings.UiDimmingGreen = suggestion.Green;
+        settings.UiDimmingBlue = suggestion.Blue;
+        settings.UiDimmingOpacityPercent = suggestion.OpacityPercent;
+    }
+
+    private DimmingSuggestion SmoothDimmingSuggestion(DimmingSuggestion suggestion)
+    {
+        var settings = _viewModel.Settings;
+        var red = SmoothColor(settings.UiDimmingRed, suggestion.Red);
+        var green = SmoothColor(settings.UiDimmingGreen, suggestion.Green);
+        var blue = SmoothColor(settings.UiDimmingBlue, suggestion.Blue);
+        var opacity = SmoothValue(settings.UiDimmingOpacityPercent, suggestion.OpacityPercent);
+
+        return new DimmingSuggestion(red, green, blue, opacity);
+    }
+
+    private DimmingSuggestion AnalyzeDimmingSuggestion(Drawing.Rectangle bounds, bool compensateCurrentOverlay)
+    {
+        using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
+        using (var graphics = Drawing.Graphics.FromImage(bitmap))
+        {
+            graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+        }
+
+        var stepX = Math.Max(1, bitmap.Width / 96);
+        var stepY = Math.Max(1, bitmap.Height / 54);
+        double red = 0;
+        double green = 0;
+        double blue = 0;
+        double luma = 0;
+        var brightPixels = 0;
+        var count = 0;
+
+        for (var y = 0; y < bitmap.Height; y += stepY)
+        {
+            for (var x = 0; x < bitmap.Width; x += stepX)
+            {
+                var pixel = bitmap.GetPixel(x, y);
+                var sample = compensateCurrentOverlay
+                    ? EstimateOriginalPixel(pixel)
+                    : (Red: (double)pixel.R, Green: (double)pixel.G, Blue: (double)pixel.B);
+                var pixelLuma = 0.2126 * sample.Red + 0.7152 * sample.Green + 0.0722 * sample.Blue;
+                red += sample.Red;
+                green += sample.Green;
+                blue += sample.Blue;
+                luma += pixelLuma;
+                if (pixelLuma >= 205)
+                {
+                    brightPixels++;
+                }
+
+                count++;
+            }
+        }
+
+        if (count == 0)
+        {
+            return new DimmingSuggestion(0, 0, 0, 30);
+        }
+
+        red /= count;
+        green /= count;
+        blue /= count;
+        luma /= count;
+        var brightRatio = (double)brightPixels / count;
+        var brightnessFactor = Math.Clamp((luma - 65) / 155, 0, 1);
+        var glareFactor = Math.Sqrt(Math.Clamp(brightRatio, 0, 1));
+        var opacity = Math.Clamp(14 + brightnessFactor * 27 + glareFactor * 26, 14, 65);
+        var counterRed = ClampColor(6 + (255 - red) * 0.10);
+        var counterGreen = ClampColor(8 + (255 - green) * 0.12);
+        var counterBlue = ClampColor(14 + (255 - blue) * 0.18);
+
+        if (red + green > blue * 2.15)
+        {
+            counterBlue = Math.Max(counterBlue, 42);
+            counterGreen = Math.Min(counterGreen, 24);
+            counterRed = Math.Min(counterRed, 18);
+        }
+
+        return new DimmingSuggestion(counterRed, counterGreen, counterBlue, opacity);
+    }
+
+    private (double Red, double Green, double Blue) EstimateOriginalPixel(Drawing.Color pixel)
+    {
+        var settings = _viewModel.Settings;
+        var alpha = Math.Clamp(settings.UiDimmingOpacityPercent / 100d, 0, 0.80);
+        if (alpha <= 0.01)
+        {
+            return (pixel.R, pixel.G, pixel.B);
+        }
+
+        var sourceWeight = Math.Max(0.20, 1 - alpha);
+        var overlayRed = EffectiveDimmingColor(settings.UiDimmingRed, settings.UiDimmingOpacityPercent);
+        var overlayGreen = EffectiveDimmingColor(settings.UiDimmingGreen, settings.UiDimmingOpacityPercent);
+        var overlayBlue = EffectiveDimmingColor(settings.UiDimmingBlue, settings.UiDimmingOpacityPercent);
+        return (
+            Math.Clamp((pixel.R - overlayRed * alpha) / sourceWeight, 0, 255),
+            Math.Clamp((pixel.G - overlayGreen * alpha) / sourceWeight, 0, 255),
+            Math.Clamp((pixel.B - overlayBlue * alpha) / sourceWeight, 0, 255));
+    }
+
+    private Drawing.Rectangle ResolveUiDimmingTargetBounds()
+    {
+        var starCitizenHandle = FindStarCitizenWindowHandle();
+        if (starCitizenHandle != IntPtr.Zero)
+        {
+            return Forms.Screen.FromHandle(starCitizenHandle).Bounds;
+        }
+
+        var foreground = GetForegroundWindow();
+        if (foreground != IntPtr.Zero)
+        {
+            return Forms.Screen.FromHandle(foreground).Bounds;
+        }
+
+        return Forms.Screen.PrimaryScreen?.Bounds ?? Forms.SystemInformation.VirtualScreen;
+    }
+
+    private static IntPtr FindStarCitizenWindowHandle()
+    {
+        foreach (var process in Process.GetProcessesByName("StarCitizen"))
+        {
+            using (process)
+            {
+                if (process.MainWindowHandle != IntPtr.Zero)
+                {
+                    return process.MainWindowHandle;
+                }
+            }
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private static int ClampColor(double value) => (int)Math.Clamp(Math.Round(value), 0, 255);
+
+    private static double EffectiveDimmingColor(int value, double opacityPercent)
+    {
+        var colorScale = 1 - Math.Clamp(opacityPercent, 0, 80) / 100d;
+        return Math.Clamp(value, 0, 255) * colorScale;
+    }
+
+    private static int SmoothColor(int current, int target)
+    {
+        var delta = target - current;
+        if (Math.Abs(delta) < 4)
+        {
+            return current;
+        }
+
+        return (int)Math.Clamp(Math.Round(current + delta * 0.25), 0, 255);
+    }
+
+    private static double SmoothValue(double current, double target)
+    {
+        var delta = target - current;
+        if (Math.Abs(delta) < 1.5)
+        {
+            return current;
+        }
+
+        return Math.Clamp(current + delta * 0.25, 0, 80);
+    }
+
+    private readonly record struct DimmingSuggestion(int Red, int Green, int Blue, double OpacityPercent);
 
     private void CaptureHotkeyButtonClick(object sender, RoutedEventArgs e)
     {
@@ -642,6 +948,9 @@ public partial class MainWindow : Window
                 break;
             case "TranslationRegion":
                 _viewModel.Settings.ScreenTranslationRegionHotkey = hotkey;
+                break;
+            case "UiDimming":
+                _viewModel.Settings.UiDimmingHotkey = hotkey;
                 break;
         }
 
@@ -1143,6 +1452,11 @@ public partial class MainWindow : Window
             return HotkeyScreenTranslationRegion;
         }
 
+        if (MatchesHotkey(_viewModel.Settings.UiDimmingHotkey, virtualKey))
+        {
+            return HotkeyUiDimming;
+        }
+
         if (!_viewModel.Settings.StarCitizenHotkeysEnabled)
         {
             return 0;
@@ -1218,4 +1532,7 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int virtualKey);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 }

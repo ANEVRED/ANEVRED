@@ -226,6 +226,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public string CpuThresholdPercentText => $"{Settings.CpuThresholdPercent:0}%";
     public string AutoRamIntervalText => L.Format("MinutesValue", Settings.AutoRamIntervalMinutes);
     public string AutoCpuIntervalText => L.Format("MinutesValue", Settings.AutoCpuIntervalMinutes);
+    public string UiDimmingOpacityText => $"{Settings.UiDimmingOpacityPercent:0}%";
+    public string UiDimmingRedText => Settings.UiDimmingRed.ToString();
+    public string UiDimmingGreenText => Settings.UiDimmingGreen.ToString();
+    public string UiDimmingBlueText => Settings.UiDimmingBlue.ToString();
+    public MediaBrush UiDimmingPreviewBrush => BrushFromRgb(
+        EffectiveDimmingPreviewColor(Settings.UiDimmingRed),
+        EffectiveDimmingPreviewColor(Settings.UiDimmingGreen),
+        EffectiveDimmingPreviewColor(Settings.UiDimmingBlue));
     public string StarCitizenHotkeySummary => Settings.StarCitizenHotkeysEnabled
         ? L.Format(
             "StarCitizenHotkeySummary",
@@ -699,6 +707,18 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(CpuThresholdPercentText));
             OnPropertyChanged(nameof(AutoRamIntervalText));
             OnPropertyChanged(nameof(AutoCpuIntervalText));
+        }
+
+        if (e.PropertyName is nameof(AppSettings.UiDimmingOpacityPercent)
+            or nameof(AppSettings.UiDimmingRed)
+            or nameof(AppSettings.UiDimmingGreen)
+            or nameof(AppSettings.UiDimmingBlue))
+        {
+            OnPropertyChanged(nameof(UiDimmingOpacityText));
+            OnPropertyChanged(nameof(UiDimmingRedText));
+            OnPropertyChanged(nameof(UiDimmingGreenText));
+            OnPropertyChanged(nameof(UiDimmingBlueText));
+            OnPropertyChanged(nameof(UiDimmingPreviewBrush));
         }
 
         if (e.PropertyName is nameof(AppSettings.StarCitizenHotkeysEnabled)
@@ -1383,6 +1403,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private static MediaBrush BrushFromRgb(byte r, byte g, byte b)
     {
         return new SolidColorBrush(MediaColor.FromRgb(r, g, b));
+    }
+
+    private byte EffectiveDimmingPreviewColor(int value)
+    {
+        var colorScale = 1 - Math.Clamp(Settings.UiDimmingOpacityPercent, 0, 80) / 100d;
+        return (byte)Math.Clamp(Math.Round(Math.Clamp(value, 0, 255) * colorScale), 0, 255);
     }
 
     private static bool HasValidVram(SystemSnapshot? snapshot)

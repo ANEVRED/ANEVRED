@@ -261,5 +261,15 @@
   "AiInfoText": "ANEVRED bewertet lokale Messwerte wie CPU-, RAM-, GPU-, VRAM- und Frametime-Druck sowie sichtbare Hintergrundlast. Empfehlungen entstehen nur, wenn daraus eine sichere, nachvollziehbare Aktion abgeleitet werden kann, zum Beispiel RAM entlasten, Hintergrundlast prüfen oder Energieeinstellungen überprüfen.",
   "AiStorageTitle": "Was gespeichert wird",
   "AiStorageText": "Wenn lokales Lernen aktiv ist, speichert ANEVRED bis zu 7200 kurze Messpunkte in %LOCALAPPDATA%\\ANEVRED\\learning-history.json. Enthalten sind Zeitpunkte, Lastwerte, Star-Citizen-Status und bis zu acht auffällige Prozessnamen. Im maximalen Datenschutzmodus werden Prozessnamen vor dem Speichern gehasht.",
-  "AiReuseText": "Diese Historie wird beim nächsten Start wieder geladen und nur lokal genutzt, um wiederkehrende Lastmuster besser einzuordnen. Sie wird nicht an Server gesendet und ersetzt keine manuelle Entscheidung: geschützte, System-, Sicherheits- und Anti-Cheat-Prozesse bleiben ausgenommen."
+  "AiReuseText": "Diese Historie wird beim nächsten Start wieder geladen und nur lokal genutzt, um wiederkehrende Lastmuster besser einzuordnen. Sie wird nicht an Server gesendet und ersetzt keine manuelle Entscheidung: geschützte, System-, Sicherheits- und Anti-Cheat-Prozesse bleiben ausgenommen.",
+  "UiDimming": "UI-Dimmung",
+  "UiDimmingEnabled": "Vollbild-Dimmoverlay aktivieren",
+  "UiDimmingAutoTune": "Automatisch aus Spielbild abstimmen",
+  "UiDimmingHotkey": "Dimm-Hotkey",
+  "UiDimmingStrength": "Staerke",
+  "UiDimmingRed": "Rot",
+  "UiDimmingGreen": "Gruen",
+  "UiDimmingBlue": "Blau",
+  "UiDimmingHint": "Click-through RGB-Filter fuer helle Szenen. Nur auf dem Spielmonitor.",
+  "UiDimmingAnalyzeNow": "Aus Bild abstimmen"
 }
