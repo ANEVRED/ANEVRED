@@ -2,12 +2,15 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ImagePath,
 
-    [string]$LanguageTag = "en-US",
+    [string]$LanguageTag = "auto",
 
     [switch]$Json
 )
 
 $ErrorActionPreference = "Stop"
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[Console]::OutputEncoding = $utf8NoBom
+$OutputEncoding = $utf8NoBom
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 
 [Windows.Globalization.Language, Windows.Globalization, ContentType = WindowsRuntime] | Out-Null
@@ -42,10 +45,15 @@ $stream = Wait-WinRtOperation ($file.OpenReadAsync()) ([Windows.Storage.Streams.
 $decoder = Wait-WinRtOperation ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
 $bitmap = Wait-WinRtOperation ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
 
-$language = [Windows.Globalization.Language]::new($LanguageTag)
-$engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($language)
-if ($null -eq $engine) {
+$engine = $null
+if ([string]::IsNullOrWhiteSpace($LanguageTag) -or $LanguageTag -eq "auto" -or $LanguageTag -eq "default" -or $LanguageTag -eq "profile") {
     $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+} else {
+    $language = [Windows.Globalization.Language]::new($LanguageTag)
+    $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($language)
+    if ($null -eq $engine) {
+        $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+    }
 }
 
 if ($null -eq $engine) {

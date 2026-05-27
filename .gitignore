@@ -2,8 +2,8 @@ bin/
 obj/
 buildbin/
 buildobj/
-buildbin-check/
-buildobj-check/
+buildbin*/
+buildobj*/
 buildtmp/
 dist/
 .vs/

@@ -50,6 +50,9 @@ public sealed class SettingsService
             settings.StarCitizenServerChangeHotkey = settings.StarCitizenServerChangeHotkey;
             settings.StarCitizenRespawnHotkey = settings.StarCitizenRespawnHotkey;
             settings.StarCitizenStutterHotkey = settings.StarCitizenStutterHotkey;
+            settings.MainWindowState = settings.MainWindowState;
+            settings.MainWindowWidth = settings.MainWindowWidth;
+            settings.MainWindowHeight = settings.MainWindowHeight;
             EnsureProtectionDefaults(settings);
             return settings;
         }

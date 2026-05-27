@@ -299,19 +299,56 @@ public sealed class ChromeTranslationService : IDisposable
                 continue;
             }
 
-            var response = JsonSerializer.Deserialize<DevToolsResponse>(responseJson);
-            if (response?.Id != 1)
+            try
             {
-                continue;
-            }
+                using var document = JsonDocument.Parse(responseJson);
+                var root = document.RootElement;
+                if (!root.TryGetProperty("id", out var idElement) || idElement.GetInt32() != 1)
+                {
+                    continue;
+                }
 
-            if (response.ExceptionDetails is not null)
-            {
-                _log?.Invoke(operationName + " failed: " + response.ExceptionDetails.Text);
+                if (root.TryGetProperty("exceptionDetails", out var exceptionDetails))
+                {
+                    var text = exceptionDetails.TryGetProperty("text", out var textElement)
+                        ? textElement.GetString()
+                        : exceptionDetails.GetRawText();
+                    _log?.Invoke(operationName + " failed: " + text);
+                    return string.Empty;
+                }
+
+                if (!root.TryGetProperty("result", out var result) ||
+                    !result.TryGetProperty("result", out var remoteObject))
+                {
+                    return string.Empty;
+                }
+
+                if (remoteObject.TryGetProperty("value", out var value))
+                {
+                    return value.ValueKind switch
+                    {
+                        JsonValueKind.String => value.GetString() ?? string.Empty,
+                        JsonValueKind.Null or JsonValueKind.Undefined => string.Empty,
+                        JsonValueKind.Object or JsonValueKind.Array => value.GetRawText(),
+                        JsonValueKind.True => "true",
+                        JsonValueKind.False => "false",
+                        JsonValueKind.Number => value.GetRawText(),
+                        _ => string.Empty
+                    };
+                }
+
+                if (remoteObject.TryGetProperty("description", out var description))
+                {
+                    return description.GetString() ?? string.Empty;
+                }
+
                 return string.Empty;
             }
-
-            return response.Result?.Result?.Value ?? string.Empty;
+            catch (JsonException ex)
+            {
+                _log?.Invoke(operationName + " failed: invalid DevTools JSON response: " + ex.Message);
+                return string.Empty;
+            }
         }
 
         return string.Empty;

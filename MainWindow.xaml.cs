@@ -1,10 +1,11 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using ANEVRED.Models;
 using Forms = System.Windows.Forms;
 using ANEVRED.Services;
@@ -49,6 +50,7 @@ public partial class MainWindow : Window
     private IntPtr _keyboardHook;
     private DateTime _lastTranslationToggle = DateTime.MinValue;
     private DateTime _lastTranslationCapture = DateTime.MinValue;
+    private WindowState _lastNonMinimizedWindowState = WindowState.Maximized;
     private const int HotkeyDispatchDebounceMs = 350;
 
     public MainWindow()
@@ -78,10 +80,21 @@ public partial class MainWindow : Window
 
         ApplyTheme();
         ApplyLocalizedColumnHeaders();
+        LogsGrid.RowHeight = double.NaN;
         BuildTrayMenu();
         SourceInitialized += OnSourceInitialized;
+        Loaded += (_, _) => RestoreMainWindowPlacement();
+        StateChanged += (_, _) => RememberMainWindowPlacement();
+        LocationChanged += (_, _) => RememberMainWindowPlacement();
+        SizeChanged += (_, _) => RememberMainWindowPlacement();
         _screenTranslationTimer.Interval = TimeSpan.FromSeconds(30);
         _screenTranslationTimer.Tick += async (_, _) => await UpdateScreenTranslationAsync();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        SaveMainWindowPlacement();
+        base.OnClosing(e);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -97,6 +110,66 @@ public partial class MainWindow : Window
         _viewModel.Settings.PropertyChanged -= SettingsPropertyChanged;
         _viewModel.Dispose();
         base.OnClosed(e);
+    }
+
+    private void RestoreMainWindowPlacement()
+    {
+        var settings = _viewModel.Settings;
+
+        if (settings.MainWindowWidth >= MinWidth)
+        {
+            Width = settings.MainWindowWidth;
+        }
+
+        if (settings.MainWindowHeight >= MinHeight)
+        {
+            Height = settings.MainWindowHeight;
+        }
+
+        if (settings.MainWindowLeft >= 0 && settings.MainWindowTop >= 0)
+        {
+            Left = settings.MainWindowLeft;
+            Top = settings.MainWindowTop;
+        }
+
+        WindowState = WindowState.Maximized;
+
+        _lastNonMinimizedWindowState = WindowState == WindowState.Minimized
+            ? WindowState.Maximized
+            : WindowState;
+    }
+
+    private void SaveMainWindowPlacement()
+    {
+        var settings = _viewModel.Settings;
+        var restoreBounds = RestoreBounds;
+
+        var stateToSave = WindowState == WindowState.Minimized
+            ? _lastNonMinimizedWindowState
+            : WindowState;
+
+        settings.MainWindowState = stateToSave == WindowState.Normal ? "Normal" : "Maximized";
+
+        if (restoreBounds.Width > 0 && restoreBounds.Height > 0)
+        {
+            settings.MainWindowLeft = Math.Max(0, restoreBounds.Left);
+            settings.MainWindowTop = Math.Max(0, restoreBounds.Top);
+            settings.MainWindowWidth = restoreBounds.Width;
+            settings.MainWindowHeight = restoreBounds.Height;
+        }
+
+        _viewModel.PersistSettings();
+    }
+
+    private void RememberMainWindowPlacement()
+    {
+        if (!IsLoaded || WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
+        _lastNonMinimizedWindowState = WindowState;
+        SaveMainWindowPlacement();
     }
 
     private void ApplyLocalizedColumnHeaders()
@@ -132,16 +205,19 @@ public partial class MainWindow : Window
         if (_viewModel.ThemeMode.Equals("Light", StringComparison.OrdinalIgnoreCase))
         {
             SetBrush("WindowBackgroundBrush", "#F4F7FA");
-            SetBrush("SidebarBackgroundBrush", "#EAF0F6");
-            SetBrush("PanelBackgroundBrush", "#FFFFFF");
-            SetBrush("PanelAltBackgroundBrush", "#EAF0F6");
-            SetBrush("PanelHoverBrush", "#DCE7F3");
+            SetBrush("SidebarBackgroundBrush", "#D0EAF0F6");
+            SetBrush("PanelBackgroundBrush", "#CFFFFFFF");
+            SetBrush("PanelAltBackgroundBrush", "#C8EAF0F6");
+            SetBrush("PanelHoverBrush", "#D8DCE7F3");
             SetBrush("PrimaryTextBrush", "#10151D");
             SetBrush("SecondaryTextBrush", "#526173");
             SetBrush("DisabledTextBrush", "#7B8794");
             SetBrush("BorderBrushSoft", "#CDD6E0");
-            SetBrush("GraphFillBrush", "#F8FAFC");
-            SetBrush("TableHeaderBrush", "#E2EAF4");
+            SetBrush("GraphFillBrush", "#B8F8FAFC");
+            SetBrush("TableHeaderBrush", "#C8E2EAF4");
+            SetBrush("DataGridBackgroundBrush", "#22FFFFFF");
+            SetBrush("DataGridRowBackgroundBrush", "#88FFFFFF");
+            SetBrush("DataGridAltRowBackgroundBrush", "#80EAF0F6");
             SetBrush("FocusRingBrush", "#2563EB");
             SetBrush("DisabledButtonBackgroundBrush", "#E8EEF5");
             SetBrush("ScrollBarTrackBrush", "#E7EDF4");
@@ -154,20 +230,31 @@ public partial class MainWindow : Window
             SetBrush("VramAccentBrush", "#3B82F6");
             SetBrush("FrametimeAccentBrush", "#F97316");
             SetBrush("CriticalBrush", "#EF4444");
+            SetResource("WorkspaceLogoOpacity", 0.075);
+            SetResource("LogoContrastEffect", new DropShadowEffect
+            {
+                Color = Colors.Black,
+                BlurRadius = 24,
+                ShadowDepth = 0,
+                Opacity = 0.30
+            });
         }
         else
         {
             SetBrush("WindowBackgroundBrush", "#0B111A");
-            SetBrush("SidebarBackgroundBrush", "#09101A");
-            SetBrush("PanelBackgroundBrush", "#121A26");
-            SetBrush("PanelAltBackgroundBrush", "#151F2E");
-            SetBrush("PanelHoverBrush", "#1B2940");
+            SetBrush("SidebarBackgroundBrush", "#BC09101A");
+            SetBrush("PanelBackgroundBrush", "#A6121A26");
+            SetBrush("PanelAltBackgroundBrush", "#B5151F2E");
+            SetBrush("PanelHoverBrush", "#C41B2940");
             SetBrush("PrimaryTextBrush", "#F2F6FF");
             SetBrush("SecondaryTextBrush", "#9BA8BC");
             SetBrush("DisabledTextBrush", "#667085");
             SetBrush("BorderBrushSoft", "#263448");
-            SetBrush("GraphFillBrush", "#0E1622");
-            SetBrush("TableHeaderBrush", "#182437");
+            SetBrush("GraphFillBrush", "#880E1622");
+            SetBrush("TableHeaderBrush", "#B8182437");
+            SetBrush("DataGridBackgroundBrush", "#220B111A");
+            SetBrush("DataGridRowBackgroundBrush", "#66121A26");
+            SetBrush("DataGridAltRowBackgroundBrush", "#70151F2E");
             SetBrush("FocusRingBrush", "#60A5FA");
             SetBrush("DisabledButtonBackgroundBrush", "#101722");
             SetBrush("ScrollBarTrackBrush", "#0E1622");
@@ -180,6 +267,14 @@ public partial class MainWindow : Window
             SetBrush("VramAccentBrush", "#3B82F6");
             SetBrush("FrametimeAccentBrush", "#F97316");
             SetBrush("CriticalBrush", "#EF4444");
+            SetResource("WorkspaceLogoOpacity", 0.055);
+            SetResource("LogoContrastEffect", new DropShadowEffect
+            {
+                Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#60A5FA"),
+                BlurRadius = 18,
+                ShadowDepth = 0,
+                Opacity = 0.22
+            });
         }
     }
 
@@ -189,6 +284,32 @@ public partial class MainWindow : Window
             (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
     }
 
+    private static void SetResource(string key, object value)
+    {
+        System.Windows.Application.Current.Resources[key] = value;
+    }
+
+
+    private static System.Drawing.Icon LoadApplicationIcon()
+    {
+        try
+        {
+            var resource = System.Windows.Application.GetResourceStream(
+                new Uri("pack://application:,,,/Assets/AppIcon.ico", UriKind.Absolute));
+            if (resource?.Stream is not null)
+            {
+                using var icon = new System.Drawing.Icon(resource.Stream);
+                return (System.Drawing.Icon)icon.Clone();
+            }
+        }
+        catch
+        {
+            // Fall back to the default system icon.
+        }
+
+        return System.Drawing.SystemIcons.Application;
+    }
+
     private void BuildTrayMenu()
     {
         _trayMenu?.Dispose();
@@ -196,14 +317,14 @@ public partial class MainWindow : Window
         _trayMenu.Items.Add(_viewModel.L["Open"], null, (_, _) =>
         {
             Show();
-            WindowState = WindowState.Normal;
+            WindowState = _viewModel.Settings.MainWindowState == "Normal" ? WindowState.Normal : WindowState.Maximized;
             Activate();
         });
         _trayMenu.Items.Add(_viewModel.L["Exit"], null, (_, _) => Close());
 
         _notifyIcon ??= new Forms.NotifyIcon
         {
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = LoadApplicationIcon(),
             Visible = true
         };
 
@@ -216,7 +337,7 @@ public partial class MainWindow : Window
     private void NotifyIconDoubleClick(object? sender, EventArgs e)
     {
         Show();
-        WindowState = WindowState.Normal;
+        WindowState = _viewModel.Settings.MainWindowState == "Normal" ? WindowState.Normal : WindowState.Maximized;
         Activate();
     }
 

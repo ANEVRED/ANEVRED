@@ -35,6 +35,11 @@ public sealed class AppSettings : INotifyPropertyChanged
     private double _screenTranslationTop = 220;
     private double _screenTranslationWidth = 700;
     private double _screenTranslationHeight = 420;
+    private string _mainWindowState = "Maximized";
+    private double _mainWindowLeft = -1;
+    private double _mainWindowTop = -1;
+    private double _mainWindowWidth = 1280;
+    private double _mainWindowHeight = 820;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -212,6 +217,36 @@ public sealed class AppSettings : INotifyPropertyChanged
         set => SetField(ref _screenTranslationHeight, Math.Clamp(value, 80, 3000));
     }
 
+    public string MainWindowState
+    {
+        get => _mainWindowState;
+        set => SetField(ref _mainWindowState, NormalizeWindowState(value));
+    }
+
+    public double MainWindowLeft
+    {
+        get => _mainWindowLeft;
+        set => SetField(ref _mainWindowLeft, value);
+    }
+
+    public double MainWindowTop
+    {
+        get => _mainWindowTop;
+        set => SetField(ref _mainWindowTop, value);
+    }
+
+    public double MainWindowWidth
+    {
+        get => _mainWindowWidth;
+        set => SetField(ref _mainWindowWidth, Math.Clamp(value, 800, 5000));
+    }
+
+    public double MainWindowHeight
+    {
+        get => _mainWindowHeight;
+        set => SetField(ref _mainWindowHeight, Math.Clamp(value, 500, 3000));
+    }
+
     public ObservableCollection<ProtectionRule> ProtectionRules { get; set; } = [];
 
     public static AppSettings CreateDefault(string language)
@@ -243,6 +278,16 @@ public sealed class AppSettings : INotifyPropertyChanged
     private static string NormalizeHotkey(string? value, string fallback)
     {
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+    }
+
+    private static string NormalizeWindowState(string? value)
+    {
+        return value?.Trim() switch
+        {
+            "Maximized" => "Maximized",
+            "Minimized" => "Minimized",
+            _ => "Normal"
+        };
     }
 
 }

@@ -1,0 +1,117 @@
+<Window x:Class="ANEVRED.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Width="760"
+        Height="840"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+    <Window.Resources>
+        <DropShadowEffect x:Key="CyanGlow" Color="#38D9FF" BlurRadius="38" ShadowDepth="0" Opacity="0.55"/>
+        <DropShadowEffect x:Key="SoftShadow" Color="#000000" BlurRadius="28" ShadowDepth="0" Opacity="0.75"/>
+    </Window.Resources>
+
+    <Grid x:Name="Root" Opacity="0">
+        <Border CornerRadius="34"
+                Background="#F00A1118"
+                BorderBrush="#6638D9FF"
+                BorderThickness="1.4"
+                Effect="{StaticResource SoftShadow}">
+            <Grid>
+                <Ellipse Width="640" Height="640"
+                         Fill="#1126C6FF"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Top"
+                         Margin="0,36,0,0"
+                         Effect="{StaticResource CyanGlow}"/>
+                <Grid RowDefinitions="*,Auto,Auto" Margin="42">
+                    <Grid x:Name="LogoSplitRoot"
+                          Width="640"
+                          Height="640"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <ScaleTransform x:Name="LogoScale" ScaleX="0.96" ScaleY="0.96"/>
+                        </Grid.RenderTransform>
+
+                        <Image x:Name="CenterLogo"
+                               Source="Assets/AppLogo.png"
+                               Stretch="Uniform"
+                               Width="640"
+                               Height="640"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               SnapsToDevicePixels="True"/>
+
+                        <Image x:Name="LogoLeft"
+                               Source="Assets/AppLogo.png"
+                               Stretch="UniformToFill"
+                               Width="640"
+                               Height="640"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               SnapsToDevicePixels="True">
+                            <Image.Clip>
+                                <RectangleGeometry Rect="0,0,320,640"/>
+                            </Image.Clip>
+                            <Image.RenderTransform>
+                                <TranslateTransform x:Name="LogoLeftTransform"/>
+                            </Image.RenderTransform>
+                        </Image>
+
+                        <Image x:Name="LogoRight"
+                               Source="Assets/AppLogo.png"
+                               Stretch="UniformToFill"
+                               Width="640"
+                               Height="640"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               SnapsToDevicePixels="True">
+                            <Image.Clip>
+                                <RectangleGeometry Rect="320,0,320,640"/>
+                            </Image.Clip>
+                            <Image.RenderTransform>
+                                <TranslateTransform x:Name="LogoRightTransform"/>
+                            </Image.RenderTransform>
+                        </Image>
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Text="Adaptive Neural Enhanced Visual Recognition Engine Daemon"
+                               Foreground="#CCECFAFF"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,8"/>
+
+                    <TextBlock Grid.Row="2"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               FontSize="14"
+                               Foreground="#90C7D7E4">
+                        <Hyperlink NavigateUri="https://www.robertsspaceindustries.com/enlist?referral=STAR-4WLN-4RNF"
+                                   RequestNavigate="ReferralLink_RequestNavigate"
+                                   Foreground="#65D7FF"
+                                   TextDecorations="None">
+                            Roberts Space Industries Referral: STAR-4WLN-4RNF
+                        </Hyperlink>
+                    </TextBlock>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

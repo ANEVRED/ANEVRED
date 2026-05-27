@@ -1,10 +1,11 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0B111A"/>
-    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#09101A"/>
-    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#121A26"/>
-    <SolidColorBrush x:Key="PanelAltBackgroundBrush" Color="#151F2E"/>
-    <SolidColorBrush x:Key="PanelHoverBrush" Color="#1B2940"/>
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#BC09101A"/>
+    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#A6121A26"/>
+    <SolidColorBrush x:Key="PanelAltBackgroundBrush" Color="#B5151F2E"/>
+    <SolidColorBrush x:Key="PanelHoverBrush" Color="#C41B2940"/>
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F2F6FF"/>
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#9BA8BC"/>
     <SolidColorBrush x:Key="DisabledTextBrush" Color="#667085"/>
@@ -18,11 +19,16 @@
     <SolidColorBrush x:Key="VramAccentBrush" Color="#3B82F6"/>
     <SolidColorBrush x:Key="FrametimeAccentBrush" Color="#F97316"/>
     <SolidColorBrush x:Key="CriticalBrush" Color="#EF4444"/>
-    <SolidColorBrush x:Key="GraphFillBrush" Color="#0E1622"/>
-    <SolidColorBrush x:Key="TableHeaderBrush" Color="#182437"/>
+    <SolidColorBrush x:Key="GraphFillBrush" Color="#880E1622"/>
+    <SolidColorBrush x:Key="TableHeaderBrush" Color="#B8182437"/>
+    <SolidColorBrush x:Key="DataGridBackgroundBrush" Color="#220B111A"/>
+    <SolidColorBrush x:Key="DataGridRowBackgroundBrush" Color="#66121A26"/>
+    <SolidColorBrush x:Key="DataGridAltRowBackgroundBrush" Color="#70151F2E"/>
     <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="#0E1622"/>
     <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#314157"/>
     <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#425A78"/>
+    <sys:Double x:Key="WorkspaceLogoOpacity">0.055</sys:Double>
+    <DropShadowEffect x:Key="LogoContrastEffect" Color="#60A5FA" BlurRadius="18" ShadowDepth="0" Opacity="0.22"/>
 
     <Thickness x:Key="PanelPadding">14</Thickness>
 
@@ -374,17 +380,31 @@
     </Style>
 
     <Style TargetType="{x:Type DataGrid}">
-        <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource DataGridBackgroundBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="GridLinesVisibility" Value="Horizontal"/>
         <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BorderBrushSoft}"/>
-        <Setter Property="RowBackground" Value="{DynamicResource PanelBackgroundBrush}"/>
-        <Setter Property="AlternatingRowBackground" Value="{DynamicResource PanelAltBackgroundBrush}"/>
+        <Setter Property="RowBackground" Value="{DynamicResource DataGridRowBackgroundBrush}"/>
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource DataGridAltRowBackgroundBrush}"/>
         <Setter Property="RowHeight" Value="30"/>
         <Setter Property="ColumnHeaderHeight" Value="34"/>
         <Setter Property="HeadersVisibility" Value="Column"/>
+    </Style>
+
+    <Style TargetType="{x:Type DataGridCell}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Padding" Value="6,0"/>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource PanelHoverBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="{x:Type DataGridColumnHeader}">

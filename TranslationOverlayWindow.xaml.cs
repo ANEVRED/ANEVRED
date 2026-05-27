@@ -24,6 +24,10 @@ public partial class TranslationOverlayWindow : Window
     public TranslationOverlayWindow()
     {
         InitializeComponent();
+        UseLayoutRounding = true;
+        SnapsToDevicePixels = true;
+        RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.NearestNeighbor);
+        RenderOptions.SetEdgeMode(this, EdgeMode.Aliased);
         RegionFrame.Opacity = 0;
         SourceInitialized += (_, _) => MakeClickThrough();
     }
@@ -109,23 +113,34 @@ public partial class TranslationOverlayWindow : Window
             var top = Math.Clamp(segment.Top, 0, Math.Max(0, _regionHeight - 16));
             var width = Math.Max(32, Math.Min(segment.Width, Math.Max(32, _regionWidth - left - 2)));
             var height = Math.Max(16, Math.Min(segment.Height, Math.Max(16, _regionHeight - top - 2)));
+            var fontSize = CalculateFontSize(segment);
+            var readableWidth = Math.Min(
+                Math.Max(32, _regionWidth - left - 2),
+                Math.Max(width, EstimateReadableWidth(segment, fontSize)));
+            var readableHeight = Math.Min(
+                Math.Max(16, _regionHeight - top - 2),
+                Math.Max(height + 16, EstimateReadableHeight(segment.TranslatedText, readableWidth, fontSize)));
 
             var textBlock = new TextBlock
             {
                 Text = segment.TranslatedText,
                 TextWrapping = TextWrapping.Wrap,
-                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextTrimming = TextTrimming.None,
                 Foreground = System.Windows.Media.Brushes.White,
-                FontSize = CalculateFontSize(segment),
+                FontSize = fontSize,
+                FontWeight = FontWeights.SemiBold,
                 LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(245, 5, 10, 16)),
-                Padding = new Thickness(3, 1, 3, 1),
-                Width = width,
-                MaxHeight = Math.Min(_regionHeight - top, Math.Max(height + 10, height * 2.8)),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(226, 5, 10, 16)),
+                Padding = new Thickness(5, 2, 5, 3),
+                Width = readableWidth,
+                Height = readableHeight,
                 ClipToBounds = true,
-                IsHitTestVisible = false
+                IsHitTestVisible = false,
+                SnapsToDevicePixels = true
             };
             textBlock.LineHeight = textBlock.FontSize * 1.16;
+            TextOptions.SetTextFormattingMode(textBlock, TextFormattingMode.Display);
+            TextOptions.SetTextRenderingMode(textBlock, TextRenderingMode.ClearType);
 
             Canvas.SetLeft(textBlock, left);
             Canvas.SetTop(textBlock, top);
@@ -293,9 +308,36 @@ public partial class TranslationOverlayWindow : Window
 
     private static double CalculateFontSize(ScreenTranslationSegment segment)
     {
-        var byHeight = Math.Clamp(segment.Height <= 24 ? segment.Height * 0.78 : 13, 9, 15);
+        var byHeight = Math.Clamp(segment.Height <= 24 ? segment.Height * 0.82 : 14, 10.5, 16);
         var textPressure = segment.TranslatedText.Length / Math.Max(1.0, segment.OriginalText.Length);
-        return textPressure > 1.8 ? Math.Max(9, byHeight - 1.5) : byHeight;
+        return textPressure > 1.8 ? Math.Max(10, byHeight - 1.4) : byHeight;
+    }
+
+    private static double EstimateReadableWidth(ScreenTranslationSegment segment, double fontSize)
+    {
+        var text = segment.TranslatedText;
+        var longestWord = text
+            .Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(word => word.Length)
+            .DefaultIfEmpty(0)
+            .Max();
+        var textPressure = text.Length / Math.Max(1.0, segment.OriginalText.Length);
+        var lineTarget = text.Length <= 18
+            ? text.Length
+            : Math.Min(42, Math.Max(longestWord, text.Length / 2));
+        var estimated = lineTarget * fontSize * 0.58 + 18;
+        var expansion = text.Length > 24 || textPressure > 1.35
+            ? segment.Width * 1.65
+            : segment.Width;
+        return Math.Clamp(Math.Max(estimated, expansion), 48, 460);
+    }
+
+    private static double EstimateReadableHeight(string text, double width, double fontSize)
+    {
+        var charsPerLine = Math.Max(6, (int)((width - 12) / Math.Max(1, fontSize * 0.56)));
+        var lines = Math.Max(1, (int)Math.Ceiling(text.Length / (double)charsPerLine));
+        lines += text.Count(ch => ch == '\n');
+        return Math.Clamp(lines * fontSize * 1.32 + 12, 24, 240);
     }
 
     private void MakeClickThrough()

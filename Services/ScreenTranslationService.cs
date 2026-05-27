@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Drawing.Text;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -79,15 +80,19 @@ public sealed class ScreenTranslationService : IDisposable
             SaveDebugCapture(bitmap, "last-ocr-raw.png");
             SaveDebugCapture(preparedBitmap, "last-ocr-capture.png");
 
-            var ocrBitmapWidth = preparedBitmap.Width;
-            var ocrBitmapHeight = preparedBitmap.Height;
-            var ocrResult = await ReadTextFromBitmapWithWindowsOcrAsync(preparedBitmap, "default");
+            // Try native pixels first. Upscaling helps some tiny UI text, but it can also make
+            // anti-aliased game fonts look blocky/soft and shift OCR coordinates. If native OCR
+            // succeeds, we keep native coordinates and the overlay maps much more accurately.
+            var ocrBitmapWidth = bitmap.Width;
+            var ocrBitmapHeight = bitmap.Height;
+            var ocrResult = await ReadTextFromBitmapWithWindowsOcrAsync(bitmap, "raw-native");
             cancellationToken.ThrowIfCancellationRequested();
 
             if (IsOcrEmpty(ocrResult))
             {
                 var retryVariants = new (string Name, Func<Bitmap> Factory)[]
                 {
+                    ("crisp-2x", () => (Bitmap)preparedBitmap.Clone()),
                     ("relaxed-2x", () => PrepareForOcrRelaxed(bitmap)),
                     ("ui-3x", () => PrepareForUiTextOcr(bitmap)),
                     ("raw-3x", () => PrepareRawUpscaledForOcr(bitmap)),
@@ -112,6 +117,10 @@ public sealed class ScreenTranslationService : IDisposable
 
                     _log?.Invoke($"OCR retry {variant.Name} returned no text.");
                 }
+            }
+            else
+            {
+                _log?.Invoke($"OCR native succeeded: chars={ocrResult.Text.Length}, lines={ocrResult.Lines.Count}");
             }
 
             var originalText = ocrResult.Text;
@@ -182,6 +191,19 @@ public sealed class ScreenTranslationService : IDisposable
         return bitmap;
     }
 
+
+    private static void ConfigureOcrUpscaleGraphics(Graphics graphics)
+    {
+        // OCR needs crisp glyph edges. HighQualityBicubic/Bilinear makes game/UI fonts
+        // look nicer to humans but blurs letter borders and can make Windows OCR miss text.
+        // NearestNeighbor keeps the original pixel geometry during 2x/3x scaling.
+        graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+        graphics.PixelOffsetMode = PixelOffsetMode.Half;
+        graphics.SmoothingMode = SmoothingMode.None;
+        graphics.CompositingQuality = CompositingQuality.HighSpeed;
+        graphics.TextRenderingHint = TextRenderingHint.SingleBitPerPixelGridFit;
+    }
+
     private static Bitmap PrepareForOcrRelaxed(Bitmap source)
     {
         var scale = source.Width < 1400 ? 2 : 1;
@@ -190,8 +212,7 @@ public sealed class ScreenTranslationService : IDisposable
         var scaled = new Bitmap(width, height, PixelFormat.Format24bppRgb);
         using var graphics = Graphics.FromImage(scaled);
         graphics.Clear(Color.Black);
-        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        ConfigureOcrUpscaleGraphics(graphics);
         graphics.DrawImage(source, new Rectangle(0, 0, width, height));
 
         // Mild contrast only. Keeps anti-aliased UI text readable for Windows OCR.
@@ -280,9 +301,7 @@ public sealed class ScreenTranslationService : IDisposable
         var scaled = new Bitmap(width, height, PixelFormat.Format24bppRgb);
         using var graphics = Graphics.FromImage(scaled);
         graphics.Clear(background);
-        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-        graphics.SmoothingMode = SmoothingMode.None;
+        ConfigureOcrUpscaleGraphics(graphics);
         graphics.DrawImage(source, new Rectangle(0, 0, width, height));
         return scaled;
     }
@@ -295,8 +314,7 @@ public sealed class ScreenTranslationService : IDisposable
         var scaled = new Bitmap(width, height, PixelFormat.Format24bppRgb);
         using var graphics = Graphics.FromImage(scaled);
         graphics.Clear(Color.Black);
-        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        ConfigureOcrUpscaleGraphics(graphics);
         graphics.DrawImage(source, new Rectangle(0, 0, width, height));
 
         var rect = new Rectangle(0, 0, scaled.Width, scaled.Height);
@@ -385,7 +403,7 @@ public sealed class ScreenTranslationService : IDisposable
 
         var output = await RunProcessAsync(
             "powershell.exe",
-            $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -ImagePath \"{imagePath}\" -LanguageTag en-US -Json",
+            $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" -ImagePath \"{imagePath}\" -LanguageTag auto -Json",
             timeoutMs: 16000);
         return ParseOcrResult(output);
     }
@@ -461,6 +479,7 @@ public sealed class ScreenTranslationService : IDisposable
         var xScale = preparedWidth <= 0 ? 1 : (double)captureRegion.Width / preparedWidth;
         var yScale = preparedHeight <= 0 ? 1 : (double)captureRegion.Height / preparedHeight;
         var result = new List<ScreenTranslationSegment>();
+        var failedTranslations = 0;
         foreach (var block in blocks)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -475,7 +494,24 @@ public sealed class ScreenTranslationService : IDisposable
             translated = CleanTranslatedBlockText(translated, originalBlock, targetLanguage);
             if (string.IsNullOrWhiteSpace(translated))
             {
+                failedTranslations++;
                 translated = originalBlock;
+            }
+            else if (LooksLikeUntranslatedEcho(translated, originalBlock, targetLanguage))
+            {
+                failedTranslations++;
+            }
+
+            if (ShouldSuppressShortGameProperNoun(originalBlock))
+            {
+                _log?.Invoke("Structured translation skipped proper noun/button text: " + TrimForLog(originalBlock));
+                continue;
+            }
+
+            if (ShouldSuppressActionLabel(originalBlock))
+            {
+                _log?.Invoke("Structured translation skipped action/navigation text: " + TrimForLog(originalBlock));
+                continue;
             }
 
             result.Add(new ScreenTranslationSegment
@@ -487,6 +523,11 @@ public sealed class ScreenTranslationService : IDisposable
                 Width = Math.Max(36, block.Width * xScale),
                 Height = Math.Max(18, block.Height * yScale)
             });
+        }
+
+        if (failedTranslations > 0)
+        {
+            _log?.Invoke($"Structured translation partial fallback: {failedTranslations}/{result.Count} blocks used original OCR text.");
         }
 
         return result;
@@ -614,6 +655,98 @@ public sealed class ScreenTranslationService : IDisposable
 
         var common = lineWords.Count(word => originalWords.Contains(word));
         return common >= 2 && common / (double)lineWords.Count >= 0.62;
+    }
+
+    private static bool LooksLikeUntranslatedEcho(string translated, string original, string targetLanguage)
+    {
+        if (string.IsNullOrWhiteSpace(translated) || string.IsNullOrWhiteSpace(original))
+        {
+            return false;
+        }
+
+        var wantsCyrillic = targetLanguage.StartsWith("ru", StringComparison.OrdinalIgnoreCase)
+            || targetLanguage.StartsWith("uk", StringComparison.OrdinalIgnoreCase);
+        if (wantsCyrillic && ContainsCyrillic(translated))
+        {
+            return false;
+        }
+
+        var translatedKey = ToComparisonKey(translated);
+        var originalKey = ToComparisonKey(original);
+        if (translatedKey.Length < 6 || originalKey.Length < 6)
+        {
+            return string.Equals(translated.Trim(), original.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        return translatedKey.Equals(originalKey, StringComparison.OrdinalIgnoreCase)
+            || LooksLikeOriginalEcho(translated, original);
+    }
+
+    private static bool ShouldSuppressShortGameProperNoun(string original)
+    {
+        if (string.IsNullOrWhiteSpace(original) || original.Length > 42)
+        {
+            return false;
+        }
+
+        var normalized = original.Trim();
+        if (Regex.IsMatch(normalized, @"^\d+([.,:]\d+)?\s*(s|min|h|d|SCU|aUEC|UEC|%|/|\-)?$", RegexOptions.IgnoreCase))
+        {
+            return true;
+        }
+
+        var knownProperNames = new[]
+        {
+            "Aegis", "Anvil", "Argo", "Origin", "Drake", "Crusader", "MISC", "RSI",
+            "Consolidated", "Outland", "Banu", "Xi'an", "Xian", "Vanduul", "Tevarin",
+            "Area18", "ArcCorp", "Lorville", "Orison", "MicroTech", "Hurston", "Crusader",
+            "Pyro", "Stanton", "Red Wind", "Linehaul", "Riker"
+        };
+
+        return knownProperNames.Any(name => normalized.Contains(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ShouldSuppressActionLabel(string original)
+    {
+        if (string.IsNullOrWhiteSpace(original) || original.Length > 36)
+        {
+            return false;
+        }
+
+        var normalized = Regex.Replace(original.Trim(), @"\s+", " ");
+        var knownActions = new[]
+        {
+            "ASSEMBLE YOUR ALLIES",
+            "ENTER DEFENSECON",
+            "LAUNCH GAME",
+            "GAME IS RUNNING",
+            "MARK ALL READ",
+            "ACCEPT OFFER",
+            "RETRIEVE",
+            "CLAIM",
+            "INSURE LOADOUT"
+        };
+
+        if (knownActions.Any(action => normalized.Equals(action, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        var letters = normalized.Where(char.IsLetter).ToArray();
+        if (letters.Length < 8)
+        {
+            return false;
+        }
+
+        var upper = letters.Count(char.IsUpper);
+        var wordCount = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        return wordCount <= 4 && upper >= letters.Length * 0.75;
+    }
+
+    private static string TrimForLog(string value)
+    {
+        value = Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim();
+        return value.Length <= 90 ? value : value[..90] + "...";
     }
 
     private static HashSet<string> WordSet(string value)
@@ -1000,6 +1133,13 @@ public sealed class ScreenTranslationService : IDisposable
     private static ScreenTranslationResult BuildResult(string originalText, string translatedText, IReadOnlyList<ScreenTranslationSegment> segments, string targetLanguage, bool cached, bool shortened)
     {
         var hasTranslation = !string.IsNullOrWhiteSpace(translatedText) && !IsJsonLike(translatedText);
+        var translatedSegments = segments.Count(segment =>
+            !string.IsNullOrWhiteSpace(segment.TranslatedText)
+            && !LooksLikeUntranslatedEcho(segment.TranslatedText, segment.OriginalText, targetLanguage));
+        var untranslatedSegments = segments.Count(segment =>
+            !string.IsNullOrWhiteSpace(segment.TranslatedText)
+            && LooksLikeUntranslatedEcho(segment.TranslatedText, segment.OriginalText, targetLanguage));
+        var hasUsefulStructuredTranslation = translatedSegments > 0;
         var displayText = hasTranslation ? translatedText : (IsJsonLike(originalText) ? string.Empty : originalText);
         var status = string.IsNullOrWhiteSpace(originalText)
             ? "OCR aktiv, aber kein Text erkannt."
@@ -1012,9 +1152,47 @@ public sealed class ScreenTranslationService : IDisposable
             OriginalText = originalText,
             TranslatedText = displayText,
             Segments = segments,
-            Status = status,
+            Status = BuildTranslationStatus(originalText, targetLanguage, segments, translatedSegments, untranslatedSegments, hasUsefulStructuredTranslation, shortened, cached, status),
             IsAvailable = !string.IsNullOrWhiteSpace(displayText)
         };
+    }
+
+    private static string BuildTranslationStatus(
+        string originalText,
+        string targetLanguage,
+        IReadOnlyList<ScreenTranslationSegment> segments,
+        int translatedSegments,
+        int untranslatedSegments,
+        bool hasUsefulStructuredTranslation,
+        bool shortened,
+        bool cached,
+        string fallbackStatus)
+    {
+        if (string.IsNullOrWhiteSpace(originalText))
+        {
+            return "OCR aktiv, aber kein Text erkannt.";
+        }
+
+        if (segments.Count > 0 && hasUsefulStructuredTranslation && untranslatedSegments > 0)
+        {
+            return $"Nach {targetLanguage} teilweise übersetzt ({translatedSegments}/{segments.Count} Blöcke).";
+        }
+
+        if (segments.Count > 0 && !hasUsefulStructuredTranslation)
+        {
+            return "OCR aktiv. Chrome-Übersetzer ist nicht bereit, Originaltext wird angezeigt.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(fallbackStatus))
+        {
+            return fallbackStatus
+                .Replace("Ã¼", "ü", StringComparison.Ordinal)
+                .Replace("Ãœ", "Ü", StringComparison.Ordinal)
+                .Replace("Ã¤", "ä", StringComparison.Ordinal)
+                .Replace("Ã¶", "ö", StringComparison.Ordinal);
+        }
+
+        return $"Nach {targetLanguage} übersetzt" + (shortened ? " (gekürzt)." : cached ? " (unverändert)." : ".");
     }
 
     private static PreparedTranslationText PrepareTextForChromeTranslation(string originalText)

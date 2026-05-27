@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:ANEVRED.Controls"
         mc:Ignorable="d"
-        Title="ANEVRED Optimizer" Height="820" Width="1440" MinHeight="700" MinWidth="1180">
+        Title="ANEVRED Optimizer" Icon="Assets/AppIcon.ico" Height="820" Width="1440" MinHeight="700" MinWidth="1180" WindowState="Maximized">
     <Grid Background="{DynamicResource WindowBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="52"/>
@@ -26,6 +26,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="{Binding AppLogoSource}" Width="34" Height="34" Margin="0,0,10,0" SnapsToDevicePixels="True" RenderOptions.BitmapScalingMode="HighQuality" Effect="{DynamicResource LogoContrastEffect}"/>
                     <TextBlock Text="ANEVRED" FontSize="23" FontWeight="SemiBold" Foreground="#F5FAFF"/>
                     <TextBlock Text=" OPTIMIZER" Foreground="#7CA0C8" VerticalAlignment="Bottom" Margin="4,0,0,4"/>
                 </StackPanel>
@@ -97,6 +98,16 @@
         </Border>
 
         <Grid Grid.Row="1" Grid.Column="1" Margin="12">
+            <Image Source="{Binding AppLogoSource}"
+                   Width="760"
+                   Height="760"
+                   Opacity="{DynamicResource WorkspaceLogoOpacity}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   IsHitTestVisible="False"
+                   RenderOptions.BitmapScalingMode="HighQuality"
+                   SnapsToDevicePixels="True"
+                   Effect="{DynamicResource LogoContrastEffect}"/>
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="{Binding IsDashboardView, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel>
                     <ItemsControl ItemsSource="{Binding MetricCards}" Margin="0,0,0,8">
@@ -527,7 +538,17 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn x:Name="LogTimeColumn" Binding="{Binding TimeText}" Width="86"/>
                                 <DataGridTextColumn x:Name="LogLevelColumn" Binding="{Binding Level}" Width="80"/>
-                                <DataGridTextColumn x:Name="LogMessageColumn" Binding="{Binding Message}" Width="*"/>
+                                <DataGridTemplateColumn x:Name="LogMessageColumn" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Message}"
+                                                       TextWrapping="Wrap"
+                                                       TextTrimming="None"
+                                                       Padding="6,4"
+                                                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

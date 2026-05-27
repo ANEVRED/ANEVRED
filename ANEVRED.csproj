@@ -14,11 +14,16 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;buildbin\**;buildobj\**;buildtmp\**</DefaultItemExcludes>
-    <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);bin\**;obj\**;buildbin\**;buildobj\**;buildtmp\**</DefaultItemExcludesInProjectFolder>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;buildbin*\**;buildobj*\**;buildtmp\**</DefaultItemExcludes>
+    <DefaultItemExcludesInProjectFolder>$(DefaultItemExcludesInProjectFolder);bin\**;obj\**;buildbin*\**;buildobj*\**;buildtmp\**</DefaultItemExcludesInProjectFolder>
   </PropertyGroup>
 
   <ItemGroup>
+
+    <Resource Include="Assets\AppIcon.ico" />
+    <Resource Include="Assets\AppLogo.png" />
+    <Resource Include="Assets\AppLogoLight.png" />
     <None Update="Localization\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

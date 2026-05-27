@@ -13,6 +13,33 @@ namespace ANEVRED.ViewModels;
 
 public sealed class MainViewModel : ViewModelBase, IDisposable
 {
+    private static readonly string[] CurrentViewDependents =
+    [
+        nameof(IsDashboardView),
+        nameof(IsAiView),
+        nameof(IsProcessesView),
+        nameof(IsGamingView),
+        nameof(IsStarCitizenView),
+        nameof(IsHardwareView),
+        nameof(IsLogsView),
+        nameof(IsSettingsView),
+        nameof(IsInfoView)
+    ];
+
+    private static readonly string[] SelectedProcessDependents =
+    [
+        nameof(SelectedProcessInfoText)
+    ];
+
+    private static readonly string[] SelectedRecommendationDependents =
+    [
+        nameof(HasSelectedRecommendation),
+        nameof(RecommendationDetailTitle),
+        nameof(RecommendationDetailExplanation),
+        nameof(RecommendationDetailEvidence),
+        nameof(RecommendationDetailAction)
+    ];
+
     private readonly SettingsService _settingsService = new();
     private readonly StartupService _startupService = new();
     private readonly ProcessProtectionService _protectionService;
@@ -121,6 +148,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public IReadOnlyList<int> HistoryWindows { get; } = [5, 15, 60];
     public IReadOnlyList<AppProfile> Profiles { get; } = Enum.GetValues<AppProfile>();
     public IReadOnlyList<string> Themes { get; } = ["Dark", "Light"];
+
+    public string AppLogoSource => ThemeMode.Equals("Light", StringComparison.OrdinalIgnoreCase)
+        ? "Assets/AppLogoLight.png"
+        : "Assets/AppLogo.png";
 
     public RelayCommand AddProtectionRuleCommand { get; }
     public RelayCommand RemoveProtectionRuleCommand { get; }
@@ -234,15 +265,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             if (SetField(ref _currentView, string.IsNullOrWhiteSpace(value) ? "Dashboard" : value))
             {
                 RefreshNavigationItems();
-                OnPropertyChanged(nameof(IsDashboardView));
-                OnPropertyChanged(nameof(IsAiView));
-                OnPropertyChanged(nameof(IsProcessesView));
-                OnPropertyChanged(nameof(IsGamingView));
-                OnPropertyChanged(nameof(IsStarCitizenView));
-                OnPropertyChanged(nameof(IsHardwareView));
-                OnPropertyChanged(nameof(IsLogsView));
-                OnPropertyChanged(nameof(IsSettingsView));
-                OnPropertyChanged(nameof(IsInfoView));
+                NotifyStateChanged(CurrentViewDependents);
             }
         }
     }
@@ -305,6 +328,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             SaveSettings();
             ThemeChanged?.Invoke(this, EventArgs.Empty);
             OnPropertyChanged();
+            OnPropertyChanged(nameof(AppLogoSource));
         }
     }
 
@@ -347,7 +371,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             {
                 ProtectSelectedProcessCommand.RaiseCanExecuteChanged();
                 OptimizeSelectedProcessCommand.RaiseCanExecuteChanged();
-                OnPropertyChanged(nameof(SelectedProcessInfoText));
+                NotifyStateChanged(SelectedProcessDependents);
             }
         }
     }
@@ -371,12 +395,16 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             if (SetField(ref _selectedRecommendation, value))
             {
-                OnPropertyChanged(nameof(HasSelectedRecommendation));
-                OnPropertyChanged(nameof(RecommendationDetailTitle));
-                OnPropertyChanged(nameof(RecommendationDetailExplanation));
-                OnPropertyChanged(nameof(RecommendationDetailEvidence));
-                OnPropertyChanged(nameof(RecommendationDetailAction));
+                NotifyStateChanged(SelectedRecommendationDependents);
             }
+        }
+    }
+
+    private void NotifyStateChanged(IEnumerable<string> propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            OnPropertyChanged(propertyName);
         }
     }
 
@@ -815,6 +843,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
             OnPropertyChanged(nameof(LastLogText));
         });
+    }
+
+    public void PersistSettings()
+    {
+        SaveSettings();
     }
 
     private void SaveSettings()

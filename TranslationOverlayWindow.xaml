@@ -6,14 +6,16 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
-        ResizeMode="NoResize">
-    <Canvas x:Name="RootCanvas">
-        <Border x:Name="RegionFrame"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+    <Canvas x:Name="RootCanvas" SnapsToDevicePixels="True">
+        <Border x:Name="RegionFrame" SnapsToDevicePixels="True"
                 BorderBrush="#77A5D8FF"
                 BorderThickness="2"
                 Background="#14000000"
                 CornerRadius="6"/>
-        <Border x:Name="TextPanel"
+        <Border x:Name="TextPanel" SnapsToDevicePixels="True"
                 BorderBrush="#88A5D8FF"
                 BorderThickness="1"
                 Background="#DD050A10"
@@ -21,13 +23,13 @@
                 Padding="10">
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <TextBlock x:Name="TranslationText"
+                <TextBlock x:Name="TranslationText" SnapsToDevicePixels="True"
                            TextWrapping="Wrap"
                            Foreground="White"
                            FontSize="15"
                            LineHeight="19"/>
             </ScrollViewer>
         </Border>
-        <Canvas x:Name="SegmentCanvas" IsHitTestVisible="False"/>
+        <Canvas x:Name="SegmentCanvas" IsHitTestVisible="False" SnapsToDevicePixels="True"/>
     </Canvas>
 </Window>
