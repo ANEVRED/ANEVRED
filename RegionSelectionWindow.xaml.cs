@@ -1,4 +1,6 @@
+using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Input;
 using System.Windows.Shapes;
 
@@ -18,6 +20,19 @@ public partial class RegionSelectionWindow : Window
         Top = SystemParameters.VirtualScreenTop;
         Width = SystemParameters.VirtualScreenWidth;
         Height = SystemParameters.VirtualScreenHeight;
+    }
+
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        // Keep the game/previous window active while the selection overlay is shown.
+        // Without WS_EX_NOACTIVATE Windows may activate this WPF window; when it closes,
+        // the ANEVRED process can be brought back to the foreground.
+        var handle = new WindowInteropHelper(this).Handle;
+        var extendedStyle = GetWindowLong(handle, GwlExStyle);
+        _ = SetWindowLong(handle, GwlExStyle, extendedStyle | WsExNoActivate);
     }
 
     protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
@@ -136,4 +151,13 @@ public partial class RegionSelectionWindow : Window
         Cursor = System.Windows.Input.Cursors.Arrow;
         Mouse.OverrideCursor = null;
     }
+
+    private const int GwlExStyle = -20;
+    private const int WsExNoActivate = 0x08000000;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 }

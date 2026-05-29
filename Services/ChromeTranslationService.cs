@@ -35,11 +35,6 @@ public sealed class ChromeTranslationService : IDisposable
             return string.Empty;
         }
 
-        if (targetLanguage.Equals("en", StringComparison.OrdinalIgnoreCase))
-        {
-            return text;
-        }
-
         var chromePath = FindChromeExecutable();
         if (chromePath is null)
         {
@@ -60,7 +55,8 @@ public sealed class ChromeTranslationService : IDisposable
             return string.Empty;
         }
 
-        var translated = await EvaluateTranslationAsync(tab.WebSocketDebuggerUrl, text, NormalizeTargetLanguage(targetLanguage), cancellationToken);
+        var normalizedTarget = NormalizeTargetLanguage(targetLanguage);
+        var translated = await EvaluateTranslationAsync(tab.WebSocketDebuggerUrl, text, normalizedTarget, cancellationToken);
         if (!string.IsNullOrWhiteSpace(translated))
         {
             _log?.Invoke($"Chrome translation finished: chars={translated.Length}.");
@@ -114,7 +110,7 @@ public sealed class ChromeTranslationService : IDisposable
             return false;
         }
 
-        _log?.Invoke($"Chrome self-check: secureContext={payload.IsSecureContext}, Translator API present={payload.HasTranslator}, en->de={payload.EnDeAvailability}, en->ru={payload.EnRuAvailability}, target={payload.TargetAvailability}.");
+        _log?.Invoke($"Chrome self-check: secureContext={payload.IsSecureContext}, Translator API present={payload.HasTranslator}, en->de={payload.EnDeAvailability}, en->ru={payload.EnRuAvailability}, target={payload.TargetAvailability}, source={payload.SourceLanguage}.");
         if (!string.IsNullOrWhiteSpace(payload.Sample))
         {
             _log?.Invoke("Chrome self-check sample: " + payload.Sample);
@@ -358,22 +354,53 @@ public sealed class ChromeTranslationService : IDisposable
     {
         var textJson = JsonSerializer.Serialize(text);
         var targetJson = JsonSerializer.Serialize(targetLanguage);
+        var sourceLanguagesJson = JsonSerializer.Serialize(GetSourceLanguageCandidates(targetLanguage));
         return $$"""
 (async () => {
   if (!('Translator' in globalThis)) {
     return JSON.stringify({ error: 'Chrome Translator API is not available in this Chrome installation.' });
   }
 
-  const sourceLanguage = 'en';
   const targetLanguage = {{targetJson}};
-  const availability = await Translator.availability({ sourceLanguage, targetLanguage });
-  if (availability === 'unavailable') {
-    return JSON.stringify({ error: `Chrome cannot translate ${sourceLanguage} to ${targetLanguage}.` });
+  const fallbackSourceLanguages = {{sourceLanguagesJson}};
+  let sourceLanguages = fallbackSourceLanguages;
+  const errors = [];
+
+  if ('LanguageDetector' in globalThis) {
+    try {
+      const detectorAvailability = await LanguageDetector.availability();
+      if (detectorAvailability !== 'unavailable') {
+        const detector = await LanguageDetector.create();
+        const detections = await detector.detect({{textJson}});
+        const detectedLanguages = (Array.isArray(detections) ? detections : [])
+          .map(item => item.detectedLanguage || item.language || item)
+          .filter(language => typeof language === 'string' && language.trim().length > 0);
+        sourceLanguages = [...new Set([...detectedLanguages, ...fallbackSourceLanguages])];
+      }
+    } catch {
+      sourceLanguages = fallbackSourceLanguages;
+    }
   }
 
-  const translator = await Translator.create({ sourceLanguage, targetLanguage });
-  const translated = await translator.translate({{textJson}});
-  return JSON.stringify({ text: translated });
+  for (const sourceLanguage of sourceLanguages) {
+    if (sourceLanguage === targetLanguage) {
+      continue;
+    }
+
+    const availability = await Translator.availability({ sourceLanguage, targetLanguage });
+    if (availability === 'unavailable') {
+      errors.push(`${sourceLanguage}->${targetLanguage}: unavailable`);
+      continue;
+    }
+
+    const translator = await Translator.create({ sourceLanguage, targetLanguage });
+    const translated = await translator.translate({{textJson}});
+    if (typeof translated === 'string' && translated.trim().length > 0) {
+      return JSON.stringify({ text: translated, sourceLanguage });
+    }
+  }
+
+  return JSON.stringify({ error: `Chrome cannot translate to ${targetLanguage}. Tried: ${errors.join(', ')}` });
 })()
 """;
     }
@@ -400,9 +427,11 @@ public sealed class ChromeTranslationService : IDisposable
   }
 
   result.hasTranslator = true;
-  const sourceLanguage = 'en';
-  result.enDeAvailability = await Translator.availability({ sourceLanguage, targetLanguage: 'de' });
-  result.enRuAvailability = await Translator.availability({ sourceLanguage, targetLanguage: 'ru' });
+  const sourceLanguages = {{JsonSerializer.Serialize(GetSourceLanguageCandidates(targetLanguage))}};
+  const sourceLanguage = sourceLanguages.find(language => language !== targetLanguage) || 'en';
+  result.sourceLanguage = sourceLanguage;
+  result.enDeAvailability = await Translator.availability({ sourceLanguage: 'en', targetLanguage: 'de' });
+  result.enRuAvailability = await Translator.availability({ sourceLanguage: 'en', targetLanguage: 'ru' });
   result.targetAvailability = await Translator.availability({ sourceLanguage, targetLanguage });
 
   if (result.targetAvailability === 'unavailable') {
@@ -475,9 +504,27 @@ public sealed class ChromeTranslationService : IDisposable
             "de" or "de-de" => "de",
             "ru" or "ru-ru" => "ru",
             "en" or "en-us" or "en-gb" => "en",
+            "zh" or "zh-cn" or "zh-hans" => "zh-Hans",
+            "zh-tw" or "zh-hk" or "zh-hant" => "zh-Hant",
+            "ja" or "ja-jp" => "ja",
+            "ko" or "ko-kr" => "ko",
+            "fr" or "fr-fr" => "fr",
+            "es" or "es-es" => "es",
+            "it" or "it-it" => "it",
+            "pl" or "pl-pl" => "pl",
+            "uk" or "uk-ua" => "uk",
             var value when !string.IsNullOrWhiteSpace(value) => value,
             _ => "de"
         };
+    }
+
+    private static string[] GetSourceLanguageCandidates(string targetLanguage)
+    {
+        var normalizedTarget = NormalizeTargetLanguage(targetLanguage);
+        var commonSources = new[] { "en", "de", "ru", "zh-Hans", "zh-Hant", "fr", "es", "it", "pl", "uk", "ja", "ko" };
+        return commonSources
+            .Where(language => !language.Equals(normalizedTarget, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
     }
 
     private void StopChrome()
@@ -550,6 +597,7 @@ public sealed class ChromeTranslationService : IDisposable
         [property: JsonPropertyName("targetAvailability")] string TargetAvailability,
         [property: JsonPropertyName("enDeAvailability")] string EnDeAvailability,
         [property: JsonPropertyName("enRuAvailability")] string EnRuAvailability,
+        [property: JsonPropertyName("sourceLanguage")] string? SourceLanguage,
         [property: JsonPropertyName("sample")] string? Sample,
         [property: JsonPropertyName("error")] string? Error);
 }

@@ -538,7 +538,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn x:Name="LogTimeColumn" Binding="{Binding TimeText}" Width="86"/>
                                 <DataGridTextColumn x:Name="LogLevelColumn" Binding="{Binding Level}" Width="80"/>
-                                <DataGridTemplateColumn x:Name="LogMessageColumn" Width="*">
+                                <DataGridTemplateColumn x:Name="LogMessageColumn" Width="*" ClipboardContentBinding="{Binding Message}">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Message}"
@@ -597,6 +597,17 @@
                             <TextBlock Text="{Binding L[AiStorageTitle]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <TextBlock Text="{Binding L[AiStorageText]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding L[AiReuseText]}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource PanelCardStyle}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="{Binding L[PrivacyDataTitle]}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                            <TextBlock Text="{Binding L[PrivacyDataText]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                            <Separator Margin="0,16,0,16"/>
+                            <TextBlock Text="{Binding L[PrivacySensitiveTitle]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="{Binding L[PrivacySensitiveText]}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding L[PrivacyDebugText]}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -769,6 +780,15 @@
                                         <ComboBoxItem Content="Deutsch" Tag="de"/>
                                         <ComboBoxItem Content="English" Tag="en"/>
                                         <ComboBoxItem Content="Russian" Tag="ru"/>
+                                        <ComboBoxItem Content="Chinese (Simplified)" Tag="zh-Hans"/>
+                                        <ComboBoxItem Content="Chinese (Traditional)" Tag="zh-Hant"/>
+                                        <ComboBoxItem Content="French" Tag="fr"/>
+                                        <ComboBoxItem Content="Spanish" Tag="es"/>
+                                        <ComboBoxItem Content="Italian" Tag="it"/>
+                                        <ComboBoxItem Content="Polish" Tag="pl"/>
+                                        <ComboBoxItem Content="Ukrainian" Tag="uk"/>
+                                        <ComboBoxItem Content="Japanese" Tag="ja"/>
+                                        <ComboBoxItem Content="Korean" Tag="ko"/>
                                     </ComboBox>
                                     <Button Grid.Column="2" Content="{Binding L[ChooseScreenRegion]}" Click="ChooseTranslationRegionClick"/>
                                 </Grid>

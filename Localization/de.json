@@ -271,5 +271,10 @@
   "UiDimmingGreen": "Gruen",
   "UiDimmingBlue": "Blau",
   "UiDimmingHint": "Click-through RGB-Filter fuer helle Szenen. Nur auf dem Spielmonitor.",
-  "UiDimmingAnalyzeNow": "Aus Bild abstimmen"
+  "UiDimmingAnalyzeNow": "Aus Bild abstimmen",
+  "PrivacyDataTitle": "Datenschutz bei Overlays und Uebersetzung",
+  "PrivacyDataText": "UI-Dimmung speichert nur lokale Einstellungen wie Aktiv-Status, Hotkey, RGB-Werte und Staerke in %LOCALAPPDATA%\\ANEVRED\\settings.json. Die automatische Abstimmung misst das aktuelle Spielbild im Arbeitsspeicher und speichert dabei keine dauerhaften Screenshots. Die Live-Uebersetzung erfasst nur den gewaelten Bildschirmbereich, liest daraus Text per OCR und haelt den letzten OCR-/Uebersetzungsstand nur waehrend der laufenden App-Sitzung im Speicher. Wenn lokales Lernen aktiv ist, speichert ANEVRED bis zu 7200 kurze Messpunkte in learning-history.json; diese enthalten Leistungswerte und optional Prozessnamen, aber keine Screenshots.",
+  "PrivacySensitiveTitle": "Moegliche sensible Inhalte",
+  "PrivacySensitiveText": "Wenn der gewaehlt Bereich Logins, Passwoerter, Tokens, private Chats, E-Mails oder andere vertrauliche Daten zeigt, koennen diese Daten im OCR-Text, in der Uebersetzung oder in geteilten Diagnose-/Screenshot-Dateien sichtbar werden. Waehle deshalb nur den benoetigten Bereich aus, deaktiviere die Uebersetzung auf Login- oder Zahlungsseiten und teile keine Debug-Dateien, Logs oder Screenshots, ohne sie vorher zu pruefen.",
+  "PrivacyDebugText": "OCR-Debug-Screenshots sind standardmaessig deaktiviert. Sie werden nur gespeichert, wenn die Diagnose-Umgebungsvariable ANEVRED_SAVE_OCR_DEBUG=1 bewusst gesetzt wird. Dann koennen Dateien unter %LOCALAPPDATA%\\ANEVRED\\OcrDebug entstehen und sensible Bildinhalte enthalten."
 }

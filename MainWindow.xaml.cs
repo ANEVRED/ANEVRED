@@ -1029,7 +1029,6 @@ public partial class MainWindow : Window
             _translationOverlay.Show();
         }
 
-        _translationOverlay.Topmost = false;
         _translationOverlay.Topmost = true;
         _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: OCR done, waiting for Chrome translator.");
     }
@@ -1037,7 +1036,7 @@ public partial class MainWindow : Window
     private void TryChooseTranslationRegion()
     {
         _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: region selection requested.");
-        ChooseTranslationRegion();
+        ChooseTranslationRegion(restoreMainWindow: false);
     }
 
     private void StartScreenTranslation()
@@ -1050,8 +1049,6 @@ public partial class MainWindow : Window
         _translationOverlay.SetRegion(CurrentTranslationRegion());
         _translationOverlay.SetText(string.Empty, "Live-Übersetzung aktiv.");
         _translationOverlay.Show();
-        _translationOverlay.Activate();
-        _translationOverlay.Topmost = false;
         _translationOverlay.Topmost = true;
         if (_viewModel.Settings.ScreenTranslationAutoRefresh)
         {
@@ -1223,7 +1220,7 @@ public partial class MainWindow : Window
 
     private void ChooseTranslationRegionClick(object sender, RoutedEventArgs e)
     {
-        ChooseTranslationRegion();
+        ChooseTranslationRegion(restoreMainWindow: true);
     }
 
     private void CaptureScreenTranslationClick(object sender, RoutedEventArgs e)
@@ -1256,11 +1253,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ChooseTranslationRegion()
+    private void ChooseTranslationRegion(bool restoreMainWindow)
     {
         var wasEnabled = _viewModel.Settings.ScreenTranslationEnabled;
         var mainWasVisible = IsVisible;
         var previousWindowState = WindowState;
+        var previousForeground = GetForegroundWindow();
         _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: choose region start, wasEnabled={wasEnabled}.");
         StopScreenTranslation();
 
@@ -1275,7 +1273,11 @@ public partial class MainWindow : Window
         try
         {
             var selector = new RegionSelectionWindow();
-            if (selector.ShowDialog() == true && selector.SelectedRegion is { } region)
+            var selectedRegion = restoreMainWindow
+                ? selector.ShowDialog() == true ? selector.SelectedRegion : null
+                : ShowRegionSelectorWithoutAppReactivation(selector);
+
+            if (selectedRegion is { } region)
             {
                 _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: region selected {region}.");
                 _viewModel.Settings.ScreenTranslationLeft = region.Left;
@@ -1286,12 +1288,14 @@ public partial class MainWindow : Window
         }
         finally
         {
-            if (mainWasVisible)
+            if (mainWasVisible && restoreMainWindow)
             {
                 Show();
                 WindowState = previousWindowState;
-                // Do not Activate() here. On a single monitor this brought the tool window
-                // back over the selected target immediately after region selection.
+            }
+            else if (!restoreMainWindow)
+            {
+                RestorePreviousForeground(previousForeground);
             }
         }
 
@@ -1301,6 +1305,41 @@ public partial class MainWindow : Window
         }
 
         _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: choose region end.");
+    }
+
+    private static Rect? ShowRegionSelectorWithoutAppReactivation(RegionSelectionWindow selector)
+    {
+        var frame = new System.Windows.Threading.DispatcherFrame();
+        selector.Closed += (_, _) => frame.Continue = false;
+        selector.Show();
+        System.Windows.Threading.Dispatcher.PushFrame(frame);
+        return selector.SelectedRegion;
+    }
+
+    private void RestorePreviousForeground(IntPtr previousForeground)
+    {
+        if (previousForeground == IntPtr.Zero || previousForeground == _windowHandle)
+        {
+            return;
+        }
+
+        _ = RestorePreviousForegroundAsync(previousForeground);
+    }
+
+    private async Task RestorePreviousForegroundAsync(IntPtr previousForeground)
+    {
+        // WPF/Windows can perform activation after the modal/selection window closes.
+        // Retry shortly after close so the selected game/window wins foreground again.
+        for (var attempt = 0; attempt < 4; attempt++)
+        {
+            if (GetForegroundWindow() == previousForeground)
+            {
+                return;
+            }
+
+            _ = SetForegroundWindow(previousForeground);
+            await Task.Delay(75);
+        }
     }
 
     private static string BuildHotkeyText(ModifierKeys modifiers, Key key)
@@ -1535,4 +1574,7 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 }

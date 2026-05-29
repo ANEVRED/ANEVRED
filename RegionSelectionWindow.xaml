@@ -5,6 +5,7 @@
         AllowsTransparency="True"
         Background="#55000000"
         ShowInTaskbar="False"
+        ShowActivated="False"
         Topmost="True"
         ResizeMode="NoResize"
         Cursor="Cross">

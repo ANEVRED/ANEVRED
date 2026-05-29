@@ -271,5 +271,10 @@
   "UiDimmingGreen": "Green",
   "UiDimmingBlue": "Blue",
   "UiDimmingHint": "Click-through RGB filter for bright scenes. Limited to the game monitor.",
-  "UiDimmingAnalyzeNow": "Tune from image"
+  "UiDimmingAnalyzeNow": "Tune from image",
+  "PrivacyDataTitle": "Privacy for overlays and translation",
+  "PrivacyDataText": "UI dimming stores only local settings such as enabled state, hotkey, RGB values and strength in %LOCALAPPDATA%\\ANEVRED\\settings.json. Automatic tuning samples the current game image in memory and does not persist screenshots. Live translation captures only the selected screen region, reads text with OCR, and keeps the last OCR/translation result only in memory during the current app session. When local learning is enabled, ANEVRED stores up to 7200 short samples in learning-history.json; these include performance values and optional process names, but no screenshots.",
+  "PrivacySensitiveTitle": "Possible sensitive content",
+  "PrivacySensitiveText": "If the selected region shows logins, passwords, tokens, private chats, emails or other confidential data, that data can appear in OCR text, translation output, or shared diagnostic/screenshot files. Select only the needed area, disable translation on login or payment pages, and do not share debug files, logs or screenshots without checking them first.",
+  "PrivacyDebugText": "OCR debug screenshots are disabled by default. They are saved only when the diagnostic environment variable ANEVRED_SAVE_OCR_DEBUG=1 is intentionally set. In that case files may appear under %LOCALAPPDATA%\\ANEVRED\\OcrDebug and can contain sensitive screen content."
 }

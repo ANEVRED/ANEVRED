@@ -102,6 +102,7 @@ public partial class TranslationOverlayWindow : Window
         TranslationText.Text = string.Empty;
         TextPanel.Visibility = Visibility.Collapsed;
         var renderSegments = NormalizeSegmentsForOverlay(segments);
+
         foreach (var segment in renderSegments)
         {
             if (string.IsNullOrWhiteSpace(segment.TranslatedText))
@@ -114,9 +115,11 @@ public partial class TranslationOverlayWindow : Window
             var width = Math.Max(32, Math.Min(segment.Width, Math.Max(32, _regionWidth - left - 2)));
             var height = Math.Max(16, Math.Min(segment.Height, Math.Max(16, _regionHeight - top - 2)));
             var fontSize = CalculateFontSize(segment);
+            var isParagraph = IsParagraphSegment(segment);
+            var columnWidth = EstimateColumnWidth(renderSegments, segment);
             var readableWidth = Math.Min(
-                Math.Max(32, _regionWidth - left - 2),
-                Math.Max(width, EstimateReadableWidth(segment, fontSize)));
+                Math.Min(Math.Max(32, _regionWidth - left - 2), columnWidth),
+                Math.Max(width, EstimateReadableWidth(segment, fontSize, isParagraph)));
             var readableHeight = Math.Min(
                 Math.Max(16, _regionHeight - top - 2),
                 Math.Max(height + 16, EstimateReadableHeight(segment.TranslatedText, readableWidth, fontSize)));
@@ -130,8 +133,8 @@ public partial class TranslationOverlayWindow : Window
                 FontSize = fontSize,
                 FontWeight = FontWeights.SemiBold,
                 LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(226, 5, 10, 16)),
-                Padding = new Thickness(5, 2, 5, 3),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(238, 5, 10, 16)),
+                Padding = isParagraph ? new Thickness(7, 4, 7, 5) : new Thickness(5, 2, 5, 3),
                 Width = readableWidth,
                 Height = readableHeight,
                 ClipToBounds = true,
@@ -182,8 +185,6 @@ public partial class TranslationOverlayWindow : Window
             Height = Math.Max(14, segment.Height * scaleY)
         }).ToArray();
     }
-
-
 
     private static string SanitizeOverlayText(string text)
     {
@@ -308,12 +309,56 @@ public partial class TranslationOverlayWindow : Window
 
     private static double CalculateFontSize(ScreenTranslationSegment segment)
     {
-        var byHeight = Math.Clamp(segment.Height <= 24 ? segment.Height * 0.82 : 14, 10.5, 16);
+        var byHeight = Math.Clamp(segment.Height * 0.66, 8.5, 14);
         var textPressure = segment.TranslatedText.Length / Math.Max(1.0, segment.OriginalText.Length);
-        return textPressure > 1.8 ? Math.Max(10, byHeight - 1.4) : byHeight;
+        if (IsCompactLabelSegment(segment))
+        {
+            return Math.Clamp(byHeight - 0.8, 8.5, 11.5);
+        }
+
+        return textPressure > 1.8 ? Math.Max(8.5, byHeight - 1.2) : byHeight;
     }
 
-    private static double EstimateReadableWidth(ScreenTranslationSegment segment, double fontSize)
+    private static bool IsParagraphSegment(ScreenTranslationSegment segment)
+    {
+        return segment.TranslatedText.Length >= 80
+            || segment.OriginalText.Contains('\n')
+            || segment.Width >= 360;
+    }
+
+    private static double EstimateColumnWidth(IReadOnlyList<ScreenTranslationSegment> segments, ScreenTranslationSegment segment)
+    {
+        var segmentRight = segment.Left + segment.Width;
+        var nearestRightColumn = segments
+            .Where(other => !ReferenceEquals(other, segment))
+            .Where(other => other.Left > segment.Left + Math.Max(24, segment.Width * 0.45))
+            .Where(other => RangesOverlap(segment.Top, segment.Top + Math.Max(18, segment.Height), other.Top, other.Top + Math.Max(18, other.Height)))
+            .Select(other => other.Left)
+            .DefaultIfEmpty(double.PositiveInfinity)
+            .Min();
+
+        if (double.IsInfinity(nearestRightColumn))
+        {
+            return Math.Max(48, segment.Width * 1.55);
+        }
+
+        var available = nearestRightColumn - segment.Left - 8;
+        return Math.Clamp(available, Math.Max(48, segment.Width * 0.85), Math.Max(48, segment.Width * 1.35));
+    }
+
+    private static bool RangesOverlap(double firstStart, double firstEnd, double secondStart, double secondEnd)
+    {
+        return Math.Min(firstEnd, secondEnd) - Math.Max(firstStart, secondStart) > 0;
+    }
+
+    private static bool IsCompactLabelSegment(ScreenTranslationSegment segment)
+    {
+        return segment.Height <= 24
+            && segment.OriginalText.Length <= 42
+            && !segment.OriginalText.Contains('\n');
+    }
+
+    private static double EstimateReadableWidth(ScreenTranslationSegment segment, double fontSize, bool isParagraph)
     {
         var text = segment.TranslatedText;
         var longestWord = text
@@ -324,12 +369,20 @@ public partial class TranslationOverlayWindow : Window
         var textPressure = text.Length / Math.Max(1.0, segment.OriginalText.Length);
         var lineTarget = text.Length <= 18
             ? text.Length
-            : Math.Min(42, Math.Max(longestWord, text.Length / 2));
-        var estimated = lineTarget * fontSize * 0.58 + 18;
-        var expansion = text.Length > 24 || textPressure > 1.35
-            ? segment.Width * 1.65
+            : isParagraph
+                ? Math.Min(92, Math.Max(longestWord, text.Length / 3))
+                : IsCompactLabelSegment(segment)
+                    ? Math.Min(34, Math.Max(longestWord, text.Length / 2))
+                    : Math.Min(42, Math.Max(longestWord, text.Length / 2));
+        var estimated = lineTarget * fontSize * 0.56 + 14;
+        var expansion = isParagraph
+            ? segment.Width * 1.35
+            : IsCompactLabelSegment(segment)
+                ? segment.Width * 1.12
+                : text.Length > 24 || textPressure > 1.35
+                ? segment.Width * 1.65
             : segment.Width;
-        return Math.Clamp(Math.Max(estimated, expansion), 48, 460);
+        return Math.Clamp(Math.Max(estimated, expansion), 36, isParagraph ? 720 : 420);
     }
 
     private static double EstimateReadableHeight(string text, double width, double fontSize)

@@ -68,7 +68,7 @@ public sealed class ScreenTranslationService : IDisposable
             && !string.IsNullOrWhiteSpace(_lastOriginalText))
         {
             _log?.Invoke($"Screen unchanged, using cached translation: chars={_lastOriginalText.Length}");
-            return BuildResult(_lastOriginalText, _lastTranslatedText, _lastSegments, targetLanguage, cached: true, shortened: false);
+            return BuildResult(_lastOriginalText, _lastTranslatedText, _lastSegments, normalizedTargetLanguage, cached: true, shortened: false);
         }
 
         _lastImageHash = imageHash;
@@ -139,7 +139,7 @@ public sealed class ScreenTranslationService : IDisposable
 
             _log?.Invoke($"OCR finished: chars={originalText.Length}, lines={ocrResult.Lines.Count}");
             _ocrCompleted?.Invoke();
-            var segments = await TranslateStructuredLinesAsync(ocrResult.Lines, ocrBitmapWidth, ocrBitmapHeight, region, targetLanguage, cancellationToken);
+            var segments = await TranslateStructuredLinesAsync(ocrResult.Lines, ocrBitmapWidth, ocrBitmapHeight, region, normalizedTargetLanguage, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
             var shortened = false;
@@ -157,7 +157,7 @@ public sealed class ScreenTranslationService : IDisposable
                     _log?.Invoke($"Translation text shortened for Chrome translation: {originalText.Length} -> {preparedText.Text.Length} chars.");
                 }
 
-                translatedText = await TranslateTextAsync(preparedText.Text, targetLanguage, cancellationToken);
+                translatedText = await TranslateTextAsync(preparedText.Text, normalizedTargetLanguage, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
@@ -166,7 +166,7 @@ public sealed class ScreenTranslationService : IDisposable
             _lastOriginalText = originalText;
             _lastTranslatedText = translatedText;
             _lastSegments = segments;
-            return BuildResult(originalText, translatedText, segments, targetLanguage, cached: false, shortened);
+            return BuildResult(originalText, translatedText, segments, normalizedTargetLanguage, cached: false, shortened);
         }
         catch (OperationCanceledException)
         {
@@ -350,6 +350,11 @@ public sealed class ScreenTranslationService : IDisposable
 
     private void SaveDebugCapture(Bitmap bitmap, string fileName)
     {
+        if (!ShouldSaveOcrDebugCaptures())
+        {
+            return;
+        }
+
         try
         {
             var directory = Path.Combine(
@@ -365,6 +370,14 @@ public sealed class ScreenTranslationService : IDisposable
         {
             _log?.Invoke("OCR debug capture failed: " + ex.Message);
         }
+    }
+
+    private static bool ShouldSaveOcrDebugCaptures()
+    {
+        return string.Equals(
+            Environment.GetEnvironmentVariable("ANEVRED_SAVE_OCR_DEBUG"),
+            "1",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static string HashBitmap(Bitmap bitmap)
@@ -418,11 +431,9 @@ public sealed class ScreenTranslationService : IDisposable
         string targetLanguage,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(originalText) || targetLanguage.Equals("en", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(originalText))
         {
-            _log?.Invoke(string.IsNullOrWhiteSpace(originalText)
-                ? "Chrome translation skipped: OCR text is empty."
-                : "Chrome translation skipped: target is English.");
+            _log?.Invoke("Chrome translation skipped: OCR text is empty.");
             return originalText;
         }
 
@@ -447,7 +458,7 @@ public sealed class ScreenTranslationService : IDisposable
         string targetLanguage,
         CancellationToken cancellationToken)
     {
-        if (lines.Count == 0 || targetLanguage.Equals("en", StringComparison.OrdinalIgnoreCase))
+        if (lines.Count == 0)
         {
             return Array.Empty<ScreenTranslationSegment>();
         }
@@ -1147,6 +1158,13 @@ public sealed class ScreenTranslationService : IDisposable
                 ? $"Nach {targetLanguage} übersetzt" + (shortened ? " (gekürzt)." : cached ? " (unverändert)." : ".")
                 : $"OCR aktiv. Chrome-Übersetzer ist nicht bereit, Originaltext wird angezeigt.";
 
+        var displayLanguage = DisplayTargetLanguage(targetLanguage);
+        status = string.IsNullOrWhiteSpace(originalText)
+            ? "OCR active, but no text was found."
+            : hasTranslation
+                ? $"Translated to {displayLanguage}" + (shortened ? " (shortened)." : cached ? " (unchanged)." : ".")
+                : "OCR active. Chrome Translator is not ready; showing original text.";
+
         return new ScreenTranslationResult
         {
             OriginalText = originalText,
@@ -1168,6 +1186,21 @@ public sealed class ScreenTranslationService : IDisposable
         bool cached,
         string fallbackStatus)
     {
+        if (string.IsNullOrWhiteSpace(originalText))
+        {
+            return "OCR active, but no text was found.";
+        }
+
+        if (segments.Count > 0 && hasUsefulStructuredTranslation && untranslatedSegments > 0)
+        {
+            return $"Partially translated to {DisplayTargetLanguage(targetLanguage)} ({translatedSegments}/{segments.Count} blocks).";
+        }
+
+        if (segments.Count > 0 && !hasUsefulStructuredTranslation)
+        {
+            return "OCR active. Chrome Translator is not ready; showing original text.";
+        }
+
         if (string.IsNullOrWhiteSpace(originalText))
         {
             return "OCR aktiv, aber kein Text erkannt.";
@@ -1281,7 +1314,47 @@ public sealed class ScreenTranslationService : IDisposable
 
     private static string NormalizeTargetLanguage(string? targetLanguage)
     {
-        return string.IsNullOrWhiteSpace(targetLanguage) ? "de" : targetLanguage.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(targetLanguage))
+        {
+            return "de";
+        }
+
+        return targetLanguage.Trim().ToLowerInvariant() switch
+        {
+            "de" or "de-de" => "de",
+            "ru" or "ru-ru" => "ru",
+            "en" or "en-us" or "en-gb" => "en",
+            "zh" or "zh-cn" or "zh-hans" => "zh-Hans",
+            "zh-tw" or "zh-hk" or "zh-hant" => "zh-Hant",
+            "ja" or "ja-jp" => "ja",
+            "ko" or "ko-kr" => "ko",
+            "fr" or "fr-fr" => "fr",
+            "es" or "es-es" => "es",
+            "it" or "it-it" => "it",
+            "pl" or "pl-pl" => "pl",
+            "uk" or "uk-ua" => "uk",
+            var value => value
+        };
+    }
+
+    private static string DisplayTargetLanguage(string? targetLanguage)
+    {
+        return NormalizeTargetLanguage(targetLanguage) switch
+        {
+            "de" => "German",
+            "en" => "English",
+            "ru" => "Russian",
+            "zh-Hans" => "Chinese (Simplified)",
+            "zh-Hant" => "Chinese (Traditional)",
+            "ja" => "Japanese",
+            "ko" => "Korean",
+            "fr" => "French",
+            "es" => "Spanish",
+            "it" => "Italian",
+            "pl" => "Polish",
+            "uk" => "Ukrainian",
+            var value => value
+        };
     }
 
     private sealed record PreparedTranslationText(string Text, bool WasShortened);
