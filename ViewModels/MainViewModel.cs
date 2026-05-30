@@ -48,6 +48,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly PowerPlanService _powerPlanService;
     private readonly MemoryCompressionService _memoryCompressionService;
     private readonly StarCitizenLogService _starCitizenLogService = new();
+    private readonly StarCitizenSessionHistoryService _starCitizenSessionHistoryService;
     private readonly LocalLearningService _learningService;
     private readonly DispatcherTimer _timer = new();
     private SystemSnapshot? _lastSnapshot;
@@ -58,11 +59,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private DateTime _lastNotification = DateTime.MinValue;
     private DateTime _lastProcessRefresh = DateTime.MinValue;
     private DateTime? _starCitizenSessionStarted;
+    private DateTime? _starCitizenMissingSince;
     private SessionBaseline? _starCitizenSessionBaseline;
+    private SessionBaseline? _starCitizenSessionPeak;
     private SessionBaseline? _lastMarkedEventBaseline;
     private TimeSpan _lastStarCitizenSessionDuration = TimeSpan.Zero;
     private long _starCitizenSessionLogOffset;
     private string _lastStarCitizenExitText = string.Empty;
+    private IReadOnlyList<string> _lastStarCitizenExitEvidence = [];
     private int _selectedHistoryMinutes = 5;
     private string _newProtectionPattern = string.Empty;
     private string _currentView = "Dashboard";
@@ -81,6 +85,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _powerPlanService = new PowerPlanService(L, AddLog);
         _memoryCompressionService = new MemoryCompressionService(L, AddLog);
         _learningService = new LocalLearningService(Settings, L, _settingsService.AppDataDirectory);
+        _starCitizenSessionHistoryService = new StarCitizenSessionHistoryService(_settingsService.AppDataDirectory);
+        LoadStarCitizenSessions();
 
         AddProtectionRuleCommand = new RelayCommand(_ => AddProtectionRule(), _ => !string.IsNullOrWhiteSpace(NewProtectionPattern));
         RemoveProtectionRuleCommand = new RelayCommand(_ => RemoveProtectionRule(), _ => SelectedProtectionRule is not null);
@@ -136,6 +142,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public ObservableCollection<Recommendation> Recommendations { get; } = [];
     public ObservableCollection<ProtectedProcessView> ProtectedProcesses { get; } = [];
     public ObservableCollection<StarCitizenEventView> StarCitizenEvents { get; } = [];
+    public ObservableCollection<StarCitizenSessionView> StarCitizenSessions { get; } = [];
     public ObservableCollection<LogEntry> Logs { get; } = [];
 
     public IReadOnlyList<LanguageOption> SupportedLanguages { get; } =
@@ -207,6 +214,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public string DefenderHintText => BuildDefenderHint();
     public string StarCitizenRiskText => L.Format("SessionRiskValue", CalculateStarCitizenRiskScore(), BuildStarCitizenRiskReason());
     public string LastSessionDisplayText => L.Format("LastSessionValue", LastSessionTimeText);
+    public string StarCitizenSessionTotalsText => BuildStarCitizenSessionTotals();
     public string CurrentProfileText => CurrentProfile.ToString();
     public string VramPressureText => _lastSnapshot is null || !_lastSnapshot.IsGpuDataAvailable ? L["Unknown"] : PressureText(_lastSnapshot.VramUsagePercent);
     public string ProtectedStatusText => _lastSnapshot?.Processes.Any(process => process.IsStarCitizen && process.IsProtected) == true ? L["Protected"] : L["NotProtected"];
@@ -458,8 +466,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _timer.Stop();
+        _optimizationService.ResetChangedPriorities();
         _monitoringService.Dispose();
         _learningService.Flush();
+        SaveStarCitizenSessions();
         SaveSettings();
     }
 
@@ -509,6 +519,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(DefenderHintText));
         OnPropertyChanged(nameof(StarCitizenRiskText));
         OnPropertyChanged(nameof(LastSessionDisplayText));
+        OnPropertyChanged(nameof(StarCitizenSessionTotalsText));
         OnPropertyChanged(nameof(CurrentProfileText));
         OnPropertyChanged(nameof(VramPressureText));
         OnPropertyChanged(nameof(ProtectedStatusText));
@@ -1080,26 +1091,47 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         var starCitizen = snapshot.Processes.FirstOrDefault(process => process.IsStarCitizen);
         if (starCitizen is not null && _starCitizenSessionStarted is null)
         {
+            _starCitizenMissingSince = null;
             AutoDetectStarCitizenPath(starCitizen);
             _starCitizenSessionStarted = DateTime.UtcNow;
             _starCitizenSessionBaseline = CreateBaseline(snapshot, starCitizen);
+            _starCitizenSessionPeak = _starCitizenSessionBaseline;
             _lastMarkedEventBaseline = _starCitizenSessionBaseline;
             _starCitizenSessionLogOffset = _starCitizenLogService.GetCurrentLogLength(Settings.StarCitizenPath);
             _lastStarCitizenExitText = string.Empty;
+            _lastStarCitizenExitEvidence = [];
             StarCitizenEvents.Clear();
             OnPropertyChanged(nameof(LastStarCitizenExitText));
         }
         else if (starCitizen is not null && _starCitizenSessionBaseline is null)
         {
+            _starCitizenMissingSince = null;
             _starCitizenSessionBaseline = CreateBaseline(snapshot, starCitizen);
+            _starCitizenSessionPeak = _starCitizenSessionBaseline;
             _lastMarkedEventBaseline ??= _starCitizenSessionBaseline;
+        }
+        else if (starCitizen is not null && _starCitizenSessionPeak is not null)
+        {
+            _starCitizenMissingSince = null;
+            _starCitizenSessionPeak = MaxBaseline(_starCitizenSessionPeak, CreateBaseline(snapshot, starCitizen));
         }
         else if (starCitizen is null && _starCitizenSessionStarted is not null)
         {
-            _lastStarCitizenSessionDuration = DateTime.UtcNow - _starCitizenSessionStarted.Value;
-            AnalyzeStarCitizenExit();
+            _starCitizenMissingSince ??= DateTime.UtcNow;
+            if (DateTime.UtcNow - _starCitizenMissingSince.Value < TimeSpan.FromSeconds(12))
+            {
+                return;
+            }
+
+            var sessionStarted = _starCitizenSessionStarted.Value;
+            var sessionEnded = _starCitizenMissingSince.Value;
+            _lastStarCitizenSessionDuration = sessionEnded - sessionStarted;
+            AnalyzeStarCitizenExit(sessionStarted, sessionEnded);
+            AddStarCitizenSession(sessionStarted, sessionEnded);
             _starCitizenSessionStarted = null;
+            _starCitizenMissingSince = null;
             _starCitizenSessionBaseline = null;
+            _starCitizenSessionPeak = null;
             _lastMarkedEventBaseline = null;
             _starCitizenSessionLogOffset = 0;
         }
@@ -1129,11 +1161,16 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void AnalyzeStarCitizenExit()
+    private void AnalyzeStarCitizenExit(DateTime sessionStartedUtc, DateTime sessionEndedUtc)
     {
-        var analysis = _starCitizenLogService.AnalyzeExit(Settings.StarCitizenPath, _starCitizenSessionLogOffset);
+        var analysis = _starCitizenLogService.AnalyzeExit(
+            Settings.StarCitizenPath,
+            _starCitizenSessionLogOffset,
+            sessionStartedUtc,
+            sessionEndedUtc);
         var evidence = analysis.Evidence.Count == 0 ? L["StarCitizenExitNoEvidence"] : string.Join(" | ", analysis.Evidence.Take(3));
-        _lastStarCitizenExitText = L.Format("StarCitizenExitSummary", L[analysis.StatusKey], evidence);
+        _lastStarCitizenExitText = L.Format("StarCitizenExitShortSummary", L[analysis.StatusKey]);
+        _lastStarCitizenExitEvidence = analysis.Evidence;
 
         if (!string.IsNullOrWhiteSpace(analysis.LogPath) && string.IsNullOrWhiteSpace(Settings.StarCitizenPath))
         {
@@ -1143,6 +1180,140 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         AddLog("Info", L.Format("LogStarCitizenExitAnalyzed", L[analysis.StatusKey], evidence));
         OnPropertyChanged(nameof(LastStarCitizenExitText));
         OnPropertyChanged(nameof(StarCitizenLogPathText));
+    }
+
+    private void AddStarCitizenSession(DateTime started, DateTime ended)
+    {
+        var peak = _starCitizenSessionPeak;
+        var evidence = _lastStarCitizenExitEvidence.Take(8).ToList();
+        StarCitizenSessions.Insert(0, new StarCitizenSessionView
+        {
+            StartedUtc = started,
+            EndedUtc = ended,
+            Started = started.ToLocalTime(),
+            Ended = ended.ToLocalTime(),
+            StartedText = started.ToLocalTime().ToString("g"),
+            EndedText = ended.ToLocalTime().ToString("g"),
+            DurationText = _lastStarCitizenSessionDuration.ToString(@"hh\:mm\:ss"),
+            PeakSummary = peak is null
+                ? L["Unknown"]
+                : L.Format(
+                    "StarCitizenSessionPeakSummary",
+                    peak.SystemRamGb,
+                    peak.PagefileGb,
+                    peak.VramGb,
+                    peak.StarCitizenRamMb,
+                    peak.StarCitizenCommitMb),
+            ExitSummary = _lastStarCitizenExitText,
+            LogEvidenceSummary = evidence.Count == 0
+                ? L["StarCitizenExitNoEvidence"]
+                : string.Join(Environment.NewLine, evidence),
+            LogEvidence = evidence
+        });
+
+        while (StarCitizenSessions.Count > 250)
+        {
+            StarCitizenSessions.RemoveAt(StarCitizenSessions.Count - 1);
+        }
+
+        SaveStarCitizenSessions();
+        OnPropertyChanged(nameof(StarCitizenSessionTotalsText));
+    }
+
+    private void LoadStarCitizenSessions()
+    {
+        var sessions = _starCitizenSessionHistoryService.Load()
+            .Select(RefreshSessionLogEvidence)
+            .ToList();
+        Replace(StarCitizenSessions, sessions);
+        SaveStarCitizenSessions();
+        OnPropertyChanged(nameof(StarCitizenSessionTotalsText));
+    }
+
+    private StarCitizenSessionView RefreshSessionLogEvidence(StarCitizenSessionView session)
+    {
+        if (session.StartedUtc == default
+            || session.EndedUtc == default
+            || IsSessionLogEvidenceInWindow(session))
+        {
+            return session;
+        }
+
+        var analysis = _starCitizenLogService.AnalyzeExit(
+            Settings.StarCitizenPath,
+            sessionLogOffset: 0,
+            session.StartedUtc,
+            session.EndedUtc);
+        var evidence = analysis.Evidence.Take(8).ToList();
+        return new StarCitizenSessionView
+        {
+            StartedUtc = session.StartedUtc,
+            EndedUtc = session.EndedUtc,
+            Started = session.Started,
+            Ended = session.Ended,
+            StartedText = session.StartedText,
+            EndedText = session.EndedText,
+            DurationText = session.DurationText,
+            PeakSummary = session.PeakSummary,
+            ExitSummary = L.Format("StarCitizenExitShortSummary", L[analysis.StatusKey]),
+            LogEvidenceSummary = evidence.Count == 0
+                ? L["StarCitizenExitNoEvidence"]
+                : string.Join(Environment.NewLine, evidence),
+            LogEvidence = evidence
+        };
+    }
+
+    private static bool IsSessionLogEvidenceInWindow(StarCitizenSessionView session)
+    {
+        if (session.LogEvidence.Count == 0)
+        {
+            return true;
+        }
+
+        var windowStart = session.StartedUtc.AddSeconds(-30);
+        var windowEnd = session.EndedUtc.AddSeconds(30);
+        var timestamps = session.LogEvidence
+            .Select(TryReadLogTimestamp)
+            .Where(timestamp => timestamp is not null)
+            .Select(timestamp => timestamp!.Value)
+            .ToList();
+
+        return timestamps.Count > 0
+            && timestamps.All(timestamp => timestamp >= windowStart && timestamp <= windowEnd);
+    }
+
+    private static DateTime? TryReadLogTimestamp(string line)
+    {
+        if (!line.StartsWith('<'))
+        {
+            return null;
+        }
+
+        var end = line.IndexOf('>');
+        if (end <= 1)
+        {
+            return null;
+        }
+
+        return DateTime.TryParse(
+            line[1..end],
+            null,
+            System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+            out var timestamp)
+            ? timestamp.ToUniversalTime()
+            : null;
+    }
+
+    private void SaveStarCitizenSessions()
+    {
+        try
+        {
+            _starCitizenSessionHistoryService.Save(StarCitizenSessions);
+        }
+        catch (Exception ex)
+        {
+            AddLog("Warn", L.Format("LogStarCitizenSessionHistorySaveFailed", ex.Message));
+        }
     }
 
     private void MarkStarCitizenEvent(string eventType)
@@ -1260,6 +1431,35 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         return FormatBaselineDelta(_lastMarkedEventBaseline, CreateBaseline(snapshot, starCitizen));
     }
 
+    private string BuildStarCitizenSessionTotals()
+    {
+        var completedDuration = StarCitizenSessions.Aggregate(
+            TimeSpan.Zero,
+            (total, session) => total + CalculateSessionDuration(session));
+        var activeDuration = _starCitizenSessionStarted is null
+            ? TimeSpan.Zero
+            : DateTime.UtcNow - _starCitizenSessionStarted.Value;
+        var totalDuration = completedDuration + activeDuration;
+        var sessionCount = StarCitizenSessions.Count + (_starCitizenSessionStarted is null ? 0 : 1);
+
+        return L.Format(
+            "StarCitizenSessionTotals",
+            sessionCount,
+            totalDuration.ToString(@"hh\:mm\:ss"),
+            StarCitizenSessions.Count,
+            _starCitizenSessionStarted is null ? L["Off"] : L["On"]);
+    }
+
+    private static TimeSpan CalculateSessionDuration(StarCitizenSessionView session)
+    {
+        if (session.StartedUtc != default && session.EndedUtc != default)
+        {
+            return session.EndedUtc - session.StartedUtc;
+        }
+
+        return session.Ended - session.Started;
+    }
+
     private string BuildDefenderHint()
     {
         var snapshot = _lastSnapshot;
@@ -1367,6 +1567,17 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             snapshot.VramUsedGb,
             starCitizen.MemoryMb,
             starCitizen.CommitMb);
+    }
+
+    private static SessionBaseline MaxBaseline(SessionBaseline previous, SessionBaseline current)
+    {
+        return new SessionBaseline(
+            current.Time,
+            Math.Max(previous.SystemRamGb, current.SystemRamGb),
+            Math.Max(previous.PagefileGb, current.PagefileGb),
+            Math.Max(previous.VramGb, current.VramGb),
+            Math.Max(previous.StarCitizenRamMb, current.StarCitizenRamMb),
+            Math.Max(previous.StarCitizenCommitMb, current.StarCitizenCommitMb));
     }
 
     private string FormatBaselineDelta(SessionBaseline previous, SessionBaseline current)

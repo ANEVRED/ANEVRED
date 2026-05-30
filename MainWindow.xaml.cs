@@ -112,11 +112,12 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _uiDimmingAutoTimer.Stop();
+        _uiDimmingOverlay?.Hide();
         UnregisterGlobalHotkeys();
         UninstallKeyboardHook();
         _source?.RemoveHook(WndProc);
         _screenTranslationTimer.Stop();
-        _uiDimmingAutoTimer.Stop();
         _screenTranslationService.Dispose();
         _translationOverlay?.Close();
         _uiDimmingOverlay?.Close();
@@ -1263,11 +1264,11 @@ public partial class MainWindow : Window
         StopScreenTranslation();
 
         // On a single monitor the tool window itself can cover the area the user wants to select.
-        // Hide it while the selection overlay is active and do not set it as Owner, otherwise WPF
-        // keeps bringing the owner/tool window back to the foreground.
+        // Minimize it while the selection overlay is active and do not set it as Owner, otherwise
+        // WPF keeps bringing the owner/tool window back to the foreground.
         if (mainWasVisible)
         {
-            Hide();
+            WindowState = WindowState.Minimized;
         }
 
         try
@@ -1295,6 +1296,12 @@ public partial class MainWindow : Window
             }
             else if (!restoreMainWindow)
             {
+                if (mainWasVisible)
+                {
+                    Show();
+                    WindowState = WindowState.Minimized;
+                }
+
                 RestorePreviousForeground(previousForeground);
             }
         }

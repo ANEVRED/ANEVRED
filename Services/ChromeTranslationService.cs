@@ -138,11 +138,12 @@ public sealed class ChromeTranslationService : IDisposable
             "ANEVRED",
             "ChromeTranslatorProfile");
         Directory.CreateDirectory(_profileDirectory);
+        CleanupProfileCache(_profileDirectory);
 
         var startInfo = new ProcessStartInfo
         {
             FileName = chromePath,
-            Arguments = $"--headless=new --disable-gpu --no-first-run --no-default-browser-check --remote-debugging-port=0 --user-data-dir=\"{_profileDirectory}\" about:blank",
+            Arguments = $"--headless=new --disable-gpu --disable-background-networking --disable-sync --no-first-run --no-default-browser-check --remote-debugging-port=0 --user-data-dir=\"{_profileDirectory}\" about:blank",
             UseShellExecute = false,
             CreateNoWindow = true
         };
@@ -550,6 +551,46 @@ public sealed class ChromeTranslationService : IDisposable
         finally
         {
             process.Dispose();
+            if (!string.IsNullOrWhiteSpace(_profileDirectory))
+            {
+                CleanupProfileCache(_profileDirectory);
+            }
+        }
+    }
+
+    private static void CleanupProfileCache(string profileDirectory)
+    {
+        var cacheDirectories = new[]
+        {
+            "component_crx_cache",
+            "Safe Browsing",
+            "ShaderCache",
+            "GrShaderCache",
+            "GraphiteDawnCache",
+            Path.Combine("Default", "Cache"),
+            Path.Combine("Default", "Code Cache"),
+            Path.Combine("Default", "GPUCache"),
+            Path.Combine("Default", "DawnCache")
+        };
+
+        foreach (var relativePath in cacheDirectories)
+        {
+            TryDeleteDirectory(Path.Combine(profileDirectory, relativePath));
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch
+        {
+            // Best-effort cache cleanup. Chrome may keep files locked briefly.
         }
     }
 

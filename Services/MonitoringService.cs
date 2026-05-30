@@ -118,11 +118,13 @@ public sealed class MonitoringService : IDisposable
         var limit = Math.Clamp(maxProcesses, 50, 300);
         var halfLimit = Math.Max(25, limit / 2);
         var selectedMetrics = metrics
+            .Where(process => process.IsStarCitizen)
+            .Concat(metrics
             .OrderByDescending(process => process.CpuPercent)
             .Take(halfLimit)
             .Concat(metrics.OrderByDescending(process => process.MemoryMb).Take(halfLimit))
             .Concat(metrics.OrderByDescending(process => process.CommitMb).Take(halfLimit))
-            .Concat(metrics.OrderByDescending(process => process.VramMb).Take(halfLimit))
+            .Concat(metrics.OrderByDescending(process => process.VramMb).Take(halfLimit)))
             .DistinctBy(process => process.Id)
             .OrderByDescending(process => process.CpuPercent)
             .ThenByDescending(process => process.GpuPercent)

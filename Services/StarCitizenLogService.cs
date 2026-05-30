@@ -24,17 +24,24 @@ public sealed class StarCitizenLogService
     [
         "network error",
         "code 30000",
+        "code 30016",
         "disconnect",
         "connection lost",
         "timeout",
         "server error",
-        "kicked"
+        "kicked",
+        "wsaenobufs",
+        "socket send error"
     ];
 
     private static readonly string[] NormalExitKeywords =
     [
+        "player requested disconnect",
+        "client quitting game",
+        "systemquit",
         "system quit",
         "quit requested",
+        "exitcode=0",
         "shutdown",
         "game shutdown",
         "closing"
@@ -48,12 +55,19 @@ public sealed class StarCitizenLogService
             .FirstOrDefault() ?? string.Empty;
     }
 
-    public StarCitizenExitAnalysis AnalyzeExit(string configuredPath, long sessionLogOffset)
+    public StarCitizenExitAnalysis AnalyzeExit(
+        string configuredPath,
+        long sessionLogOffset,
+        DateTime sessionStartedUtc,
+        DateTime sessionEndedUtc)
     {
+        var primaryLogPath = FindLogPath(configuredPath);
         var logPaths = FindLogCandidates(configuredPath)
             .Where(File.Exists)
-            .OrderByDescending(path => new FileInfo(path).LastWriteTimeUtc)
-            .Take(3)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(path => IsPotentialSessionLog(path, sessionStartedUtc, sessionEndedUtc))
+            .ThenByDescending(path => new FileInfo(path).LastWriteTimeUtc)
+            .Take(12)
             .ToList();
         if (logPaths.Count == 0)
         {
@@ -64,9 +78,12 @@ public sealed class StarCitizenLogService
             };
         }
 
-        var primaryLogPath = logPaths[0];
         var lines = logPaths
-            .SelectMany((path, index) => ReadRelevantLines(path, index == 0 ? sessionLogOffset : 0))
+            .SelectMany(path => ReadRelevantLines(
+                path,
+                path.Equals(primaryLogPath, StringComparison.OrdinalIgnoreCase) ? sessionLogOffset : 0,
+                sessionStartedUtc,
+                sessionEndedUtc))
             .TakeLast(350)
             .ToList();
         var evidence = FindEvidence(lines);
@@ -75,9 +92,11 @@ public sealed class StarCitizenLogService
         return new StarCitizenExitAnalysis
         {
             StatusKey = status,
-            LogPath = primaryLogPath,
+            LogPath = string.IsNullOrWhiteSpace(primaryLogPath) ? logPaths[0] : primaryLogPath,
             Evidence = evidence.Take(5).ToArray(),
-            Summary = evidence.Count == 0 ? Path.GetFileName(primaryLogPath) : string.Join(" | ", evidence.Take(3))
+            Summary = evidence.Count == 0
+                ? Path.GetFileName(string.IsNullOrWhiteSpace(primaryLogPath) ? logPaths[0] : primaryLogPath)
+                : string.Join(" | ", evidence.Take(3))
         };
     }
 
@@ -156,7 +175,7 @@ public sealed class StarCitizenLogService
 
         foreach (var candidate in Directory.EnumerateFiles(path, "Game.log", SearchOption.AllDirectories)
             .OrderByDescending(file => new FileInfo(file).LastWriteTimeUtc)
-            .Take(3))
+            .Take(12))
         {
             yield return candidate;
         }
@@ -164,7 +183,7 @@ public sealed class StarCitizenLogService
         foreach (var candidate in Directory.EnumerateDirectories(path, "logbackups", SearchOption.AllDirectories)
             .SelectMany(BackupLogs)
             .OrderByDescending(file => new FileInfo(file).LastWriteTimeUtc)
-            .Take(3))
+            .Take(12))
         {
             yield return candidate;
         }
@@ -187,7 +206,7 @@ public sealed class StarCitizenLogService
             {
                 var channelDirectory = Path.Combine(root, channel);
                 yield return Path.Combine(channelDirectory, "Game.log");
-                foreach (var backup in BackupLogs(channelDirectory).Take(2))
+                foreach (var backup in BackupLogs(channelDirectory).Take(6))
                 {
                     yield return backup;
                 }
@@ -205,10 +224,28 @@ public sealed class StarCitizenLogService
 
         return Directory.EnumerateFiles(backupDirectory, "*.log", SearchOption.TopDirectoryOnly)
             .OrderByDescending(file => new FileInfo(file).LastWriteTimeUtc)
-            .Take(3);
+            .Take(20);
     }
 
-    private static List<string> ReadRelevantLines(string logPath, long sessionLogOffset)
+    private static bool IsPotentialSessionLog(string logPath, DateTime sessionStartedUtc, DateTime sessionEndedUtc)
+    {
+        try
+        {
+            var info = new FileInfo(logPath);
+            return info.LastWriteTimeUtc >= sessionStartedUtc.AddMinutes(-10)
+                && info.CreationTimeUtc <= sessionEndedUtc.AddMinutes(10);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static List<string> ReadRelevantLines(
+        string logPath,
+        long sessionLogOffset,
+        DateTime sessionStartedUtc,
+        DateTime sessionEndedUtc)
     {
         try
         {
@@ -223,10 +260,17 @@ public sealed class StarCitizenLogService
             }
 
             using var reader = new StreamReader(stream);
-            return reader.ReadToEnd()
+            var lines = reader.ReadToEnd()
                 .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .TakeLast(250)
                 .ToList();
+            var windowStart = sessionStartedUtc.AddSeconds(-30);
+            var windowEnd = sessionEndedUtc.AddSeconds(30);
+            var windowLines = lines
+                .Where(line => IsInTimeWindow(line, windowStart, windowEnd))
+                .TakeLast(500)
+                .ToList();
+
+            return windowLines;
         }
         catch
         {
@@ -255,18 +299,45 @@ public sealed class StarCitizenLogService
             return "StarCitizenExitCrashLikely";
         }
 
+        if (evidence.Any(line => ContainsAny(line, NormalExitKeywords)))
+        {
+            return "StarCitizenExitNormalLikely";
+        }
+
         if (evidence.Any(line => ContainsAny(line, NetworkKeywords)))
         {
             return "StarCitizenExitNetworkLikely";
         }
 
-        if (evidence.Any(line => ContainsAny(line, NormalExitKeywords))
-            || lines.TakeLast(30).Any(line => ContainsAny(line, NormalExitKeywords)))
+        return "StarCitizenExitUnknown";
+    }
+
+    private static bool IsInTimeWindow(string line, DateTime windowStartUtc, DateTime windowEndUtc)
+    {
+        var timestamp = TryReadTimestamp(line);
+        return timestamp is not null && timestamp.Value >= windowStartUtc && timestamp.Value <= windowEndUtc;
+    }
+
+    private static DateTime? TryReadTimestamp(string line)
+    {
+        if (!line.StartsWith('<') || line.Length < 22)
         {
-            return "StarCitizenExitNormalLikely";
+            return null;
         }
 
-        return "StarCitizenExitUnknown";
+        var end = line.IndexOf('>');
+        if (end <= 1)
+        {
+            return null;
+        }
+
+        return DateTime.TryParse(
+            line[1..end],
+            null,
+            System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal,
+            out var timestamp)
+            ? timestamp.ToUniversalTime()
+            : null;
     }
 
     private static bool ContainsAny(string text, IEnumerable<string> keywords)
