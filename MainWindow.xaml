@@ -92,7 +92,7 @@
                     <ComboBox ItemsSource="{Binding SupportedLanguages}" DisplayMemberPath="DisplayName" SelectedValuePath="Code" SelectedValue="{Binding CurrentLanguage}" Margin="0,0,0,12"/>
                     <TextBlock Text="{Binding L[Theme]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
                     <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding ThemeMode}" Margin="0,0,0,14"/>
-                    <TextBlock Text="v0.3.0" Foreground="{DynamicResource DisabledTextBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                    <TextBlock Text="v0.3.1" Foreground="{DynamicResource DisabledTextBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
