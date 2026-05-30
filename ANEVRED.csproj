@@ -24,6 +24,9 @@
     <Resource Include="Assets\AppIcon.ico" />
     <Resource Include="Assets\AppLogo.png" />
     <Resource Include="Assets\AppLogoLight.png" />
+    <Resource Include="Assets\ANEVRED_Banner.png" />
+    <Resource Include="Assets\ANEVRED_ProfileLogo.png" />
+    <Resource Include="Assets\ANEVRED_BuyMeACoffee_Profile.png" />
     <None Update="Localization\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

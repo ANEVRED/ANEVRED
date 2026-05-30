@@ -42,3 +42,8 @@ ANEVRED is designed around local data:
 
 No cloud account is required by the application itself.
 
+
+
+## Support development
+
+ANEVRED is free to use. Users who want to support future development can use Buy Me a Coffee, PayPal, or the Star Citizen referral link shown in the app and README.

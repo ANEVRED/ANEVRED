@@ -105,3 +105,12 @@ Current recommendation examples:
 - local learning can be disabled
 - no forced optimization without user-facing control
 
+
+
+## Support and community
+
+ANEVRED includes optional support links in the Info page and splash screen. Support is never required to use the app, but it helps fund OCR improvements, Star Citizen integrations, UI dimming work, testing, and releases.
+
+- Buy Me a Coffee: https://buymeacoffee.com/anevred
+- PayPal: https://paypal.me/Anevred
+- RSI Referral: STAR-4WLN-4RNF

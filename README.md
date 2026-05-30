@@ -1,46 +1,56 @@
+<p align="center">
+  <img src="Assets/ANEVRED_Banner.png" alt="ANEVRED" width="720">
+</p>
+
 # ANEVRED
 
 **Adaptive Neural Enhanced Visual Recognition Engine Daemon**
 
-ANEVRED is a Windows performance companion for Star Citizen and other demanding games. It combines local system monitoring, safe optimization helpers, process protection, Star Citizen utilities, and an experimental screen translation overlay in one desktop tool.
+ANEVRED is a Windows gaming companion for Star Citizen and other demanding PC games. It combines system monitoring, safe optimization helpers, protected-process handling, Star Citizen tools, adaptive UI dimming, and an experimental live OCR translation overlay.
 
-The project is designed to stay local-first. It monitors the current machine, keeps learning data on the device, and avoids destructive system actions.
+<p align="center">
+  <a href="https://buymeacoffee.com/anevred"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-yellow?style=for-the-badge" alt="Buy Me a Coffee"></a>
+  <a href="https://paypal.me/Anevred"><img src="https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge" alt="PayPal"></a>
+</p>
+
+## Why ANEVRED exists
+
+ANEVRED started as a personal tool to avoid unnecessary alt-tabbing during gameplay. It has grown into a local-first gaming assistant focused on readability, accessibility, performance awareness, and quality-of-life improvements.
 
 ## Highlights
 
+- Live OCR screen translation overlay
+- Layout-aware translated text rendering
+- Chrome Translator API integration when available
+- Adaptive UI dimming / night vision support for bright scenes
 - Real-time CPU, RAM, GPU, VRAM, frametime, pagefile, and process monitoring
 - Safe optimization actions for RAM, CPU load, VRAM pressure, and background tasks
 - Protected process list for system, launcher, anti-cheat, and user-selected processes
-- Star Citizen oriented hub with session state, log support, profile awareness, and hotkeys
-- Live screen translation overlay using Windows OCR and Chrome Translator API when available
+- Star Citizen hub with session state, log support, profile awareness, and hotkeys
 - Local learning history for recommendation tuning
 - Dark and light themes with responsive dashboard panels
 - Multi-language UI support
 - Tray integration and startup-friendly window handling
 
-## What ANEVRED Does
+## Live translation overlay
 
-ANEVRED watches system pressure and foreground/background activity, then presents conservative recommendations. It does not randomly kill processes or force risky system changes. Protected processes remain excluded from optimization actions.
+ANEVRED can capture a selected screen region, run OCR locally through Windows OCR, and translate detected text with Chrome's Translator API when supported by the installed Chrome build.
 
-The AI recommendation layer is local and practical: it looks at observed load, process behavior, resource pressure, and previous samples to decide whether a suggestion is useful. It is not a cloud AI assistant and it does not upload local learning data.
+The overlay is designed for complex game UIs: it tries to preserve paragraphs, screen positions, and readability instead of dumping translated text into one large block.
 
-## Screen Translation
+## UI dimming / night vision
 
-The translation overlay captures a selected screen region, runs OCR locally through Windows OCR, and then asks Chrome's Translator API to translate the detected text when that API is available in the installed Chrome build.
+The UI dimming overlay helps reduce extreme brightness and color washout in visually intense scenes while keeping HUD elements readable. It can be toggled by hotkey and tuned from the settings page.
 
-If Chrome Translator API is not available, ANEVRED falls back to OCR/original text instead of pretending that translation succeeded.
+## Safety model
 
-Star Citizen UI text, button labels, proper names, and alien/lore terms are treated carefully so the overlay does not cover the screen with low-value translations.
+ANEVRED uses conservative local actions:
 
-## Safety Model
-
-ANEVRED is built around conservative actions:
-
-- protected processes are not terminated or modified
-- anti-cheat and system processes are excluded from unsafe actions
-- recommendations can be ignored
-- local learning can be disabled
-- privacy mode keeps learned data on the local machine
+- Protected processes are not terminated or modified
+- Anti-cheat and system processes are excluded from unsafe actions
+- Recommendations can be ignored
+- Local learning can be disabled
+- Privacy mode keeps learned data on the local machine
 
 ## Build
 
@@ -64,13 +74,21 @@ $env:TMP=$env:TEMP
 dotnet build ANEVRED.csproj -c Release -p:BaseIntermediateOutputPath=buildobj-local\ -p:BaseOutputPath=buildbin-local\
 ```
 
+## Support
+
+If ANEVRED helps you enjoy your gaming sessions, support helps fund new features, testing, and future releases.
+
+- ☕ Buy Me a Coffee: https://buymeacoffee.com/anevred
+- 💙 PayPal: https://paypal.me/Anevred
+- 🚀 Star Citizen referral: https://www.robertsspaceindustries.com/enlist?referral=STAR-4WLN-4RNF
+
 ## Documentation
 
 - [Product Description](docs/PRODUCT.md)
 - [Feature Overview](docs/FEATURES.md)
 - [Release Text](docs/RELEASE_NOTES.md)
+- [Support ANEVRED](docs/SUPPORT.md)
 
 ## Status
 
-ANEVRED is an active desktop project. Some features, especially live translation and Star Citizen specific helpers, are experimental and depend on Windows OCR, Chrome capabilities, and the current Star Citizen UI.
-
+ANEVRED is an active desktop project. Some features, especially live translation and Star Citizen-specific helpers, are experimental and depend on Windows OCR, Chrome capabilities, and the current Star Citizen UI.

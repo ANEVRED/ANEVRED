@@ -1577,4 +1577,35 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    private static void OpenExternalLink(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(url)
+            {
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Link opening is best-effort only.
+        }
+    }
+
+    private void BuyMeCoffeeButton_Click(object sender, RoutedEventArgs e)
+    {
+        OpenExternalLink("https://buymeacoffee.com/anevred");
+    }
+
+    private void PayPalButton_Click(object sender, RoutedEventArgs e)
+    {
+        OpenExternalLink("https://paypal.me/Anevred");
+    }
+
+    private void RsiReferralButton_Click(object sender, RoutedEventArgs e)
+    {
+        OpenExternalLink("https://www.robertsspaceindustries.com/enlist?referral=STAR-4WLN-4RNF");
+    }
+
 }
