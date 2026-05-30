@@ -1,5 +1,50 @@
 # Release Text
 
+## ANEVRED v0.3.1
+
+ANEVRED v0.3.1 is a refinement release focused on Star Citizen session history, more reliable log matching, safer cleanup behavior, and clearer project positioning.
+
+### Star Citizen Sessions
+
+- added persistent Star Citizen session history
+- added total session count and total play time summary
+- added bounded, scrollable session history display
+- added expandable per-session log details
+- added peak RAM, commit, VRAM, Star Citizen RAM, and Star Citizen commit summaries per session
+- improved session end handling so short intentional sessions are preserved
+
+### Game.log Analysis
+
+- matched session-end evidence to the actual session time window
+- added support for searching `LIVE\logbackups`
+- improved backup log candidate selection by session time
+- prevented stale shutdown lines from being attached to newer sessions
+- refreshed old saved session log details when possible
+
+### Security Hints
+
+- renamed Defender hint to Security hint
+- added detection for Microsoft Defender and common third-party security tools
+- added multi-security-process summaries
+- highlights the highest-load security process during a Star Citizen session
+
+### Cleanup And Safety
+
+- restored ANEVRED-changed process priorities when the app exits
+- hid the UI dimming overlay when the app exits
+- cleaned safe Chrome Translator cache folders while preserving translation data
+- minimized the main window instead of hiding it during translation region selection
+
+### Documentation
+
+- refreshed the README to explain ANEVRED's original optimization and monitoring focus
+- positioned live translation as a later experimental feature
+- clarified the local-first and conservative safety model
+
+### Version
+
+- updated visible app version and project metadata to `0.3.1`
+
 ## ANEVRED v0.3.0
 
 ANEVRED v0.3.0 introduces a stronger identity for the project and expands the application from a resource optimizer into a Star Citizen focused performance and visual recognition companion.
@@ -66,4 +111,3 @@ ANEVRED v0.3.0 introduces a stronger identity for the project and expands the ap
 - Chrome Translator API availability depends on the installed Chrome version and feature support
 - Star Citizen UI layouts can change, so OCR block grouping may need further tuning
 - alien/lore languages are not treated as complete machine translation yet; they need curated local glossaries
-
