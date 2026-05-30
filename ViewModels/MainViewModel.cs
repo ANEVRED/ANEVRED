@@ -1468,20 +1468,47 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             return L["DefenderHintNoSession"];
         }
 
-        var defender = snapshot.Processes.FirstOrDefault(process =>
-            process.Name.Contains("MsMpEng", StringComparison.OrdinalIgnoreCase)
-            || process.Name.Contains("Antimalware", StringComparison.OrdinalIgnoreCase));
-        if (defender is null)
+        var securityProcesses = snapshot.Processes
+            .Select(process => new
+            {
+                Process = process,
+                ProductName = SecurityProductName(process.Name)
+            })
+            .Where(item => item.ProductName is not null)
+            .ToList();
+        if (securityProcesses.Count == 0)
         {
             return L["DefenderHintIdle"];
         }
 
-        if (defender.CpuPercent >= 2 || defender.MemoryMb >= 180 || defender.CommitMb >= 250)
+        var securityProcess = securityProcesses
+            .OrderByDescending(item => item.Process.CpuPercent)
+            .ThenByDescending(item => item.Process.CommitMb)
+            .First();
+        var productNames = securityProcesses
+            .Select(item => item.ProductName ?? L["Unknown"])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var productSummary = string.Join(", ", productNames.Take(4));
+        if (productNames.Count > 4)
         {
-            return L.Format("DefenderHintActive", defender.CpuPercent, defender.MemoryMb, defender.CommitMb);
+            productSummary += ", +" + (productNames.Count - 4);
         }
 
-        return L.Format("DefenderHintLow", defender.CpuPercent, defender.MemoryMb);
+        var process = securityProcess.Process;
+        var productName = securityProcess.ProductName ?? L["Unknown"];
+        if (productNames.Count > 1)
+        {
+            return L.Format("SecurityHintMultiple", productSummary, productName, process.CpuPercent, process.MemoryMb, process.CommitMb);
+        }
+
+        if (process.CpuPercent >= 2 || process.MemoryMb >= 180 || process.CommitMb >= 250)
+        {
+            return L.Format("DefenderHintActive", productName, process.CpuPercent, process.MemoryMb, process.CommitMb);
+        }
+
+        return L.Format("DefenderHintLow", productName, process.CpuPercent, process.MemoryMb);
     }
 
     private int CalculateStarCitizenRiskScore()
@@ -1498,8 +1525,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         score += Math.Max(0, snapshot.VramUsagePercent - 75) * 1.2;
         score += Math.Max(0, snapshot.CpuUsagePercent - 80) * 0.8;
 
-        var defender = snapshot.Processes.FirstOrDefault(process => process.Name.Contains("MsMpEng", StringComparison.OrdinalIgnoreCase));
-        if (defender?.CpuPercent >= 2)
+        var securityProcess = snapshot.Processes.FirstOrDefault(process => SecurityProductName(process.Name) is not null);
+        if (securityProcess?.CpuPercent >= 2)
         {
             score += 8;
         }
@@ -1550,12 +1577,66 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             reasons.Add(L["RiskReasonVram"]);
         }
 
-        if (snapshot.Processes.Any(process => process.Name.Contains("MsMpEng", StringComparison.OrdinalIgnoreCase) && process.CpuPercent >= 2))
+        if (snapshot.Processes.Any(process => SecurityProductName(process.Name) is not null && process.CpuPercent >= 2))
         {
             reasons.Add(L["RiskReasonDefender"]);
         }
 
         return reasons.Count == 0 ? L["RiskReasonStable"] : string.Join(", ", reasons);
+    }
+
+    private static string? SecurityProductName(string processName)
+    {
+        if (processName.Contains("MsMpEng", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("Antimalware", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("NisSrv", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Microsoft Defender";
+        }
+
+        if (processName.Contains("Avast", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("AvastSvc", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("AvastUI", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Avast";
+        }
+
+        if (processName.Contains("AVG", StringComparison.OrdinalIgnoreCase))
+        {
+            return "AVG";
+        }
+
+        if (processName.Contains("Bitdefender", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("bdservicehost", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Bitdefender";
+        }
+
+        if (processName.Contains("ESET", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("ekrn", StringComparison.OrdinalIgnoreCase))
+        {
+            return "ESET";
+        }
+
+        if (processName.Contains("Kaspersky", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("avp", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Kaspersky";
+        }
+
+        if (processName.Contains("Norton", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("nsWscSvc", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Norton";
+        }
+
+        if (processName.Contains("Malwarebytes", StringComparison.OrdinalIgnoreCase)
+            || processName.Contains("MBAMService", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Malwarebytes";
+        }
+
+        return null;
     }
 
     private SessionBaseline CreateBaseline(SystemSnapshot snapshot, ProcessSnapshot starCitizen)
