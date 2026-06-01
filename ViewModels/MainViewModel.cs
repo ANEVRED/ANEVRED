@@ -238,6 +238,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public string UiDimmingRedText => Settings.UiDimmingRed.ToString();
     public string UiDimmingGreenText => Settings.UiDimmingGreen.ToString();
     public string UiDimmingBlueText => Settings.UiDimmingBlue.ToString();
+    public string UiColorFilterRedPercentText => $"{Settings.UiColorFilterRedPercent:0}%";
+    public string UiColorFilterGreenPercentText => $"{Settings.UiColorFilterGreenPercent:0}%";
+    public string UiColorFilterBluePercentText => $"{Settings.UiColorFilterBluePercent:0}%";
+    public string UiColorFilterContrastPercentText => $"{Settings.UiColorFilterContrastPercent:0}%";
+    public string UiColorFilterBrightnessPercentText => $"{Settings.UiColorFilterBrightnessPercent:+0;-0;0}%";
+    public string UiColorFilterGammaPercentText => $"{Settings.UiColorFilterGammaPercent:0}%";
+    public string UiColorFilterTemperatureText => $"{Settings.UiColorFilterTemperature:+0;-0;0}";
+    public string UiColorFilterTintText => $"{Settings.UiColorFilterTint:+0;-0;0}";
     public MediaBrush UiDimmingPreviewBrush => BrushFromRgb(
         EffectiveDimmingPreviewColor(Settings.UiDimmingRed),
         EffectiveDimmingPreviewColor(Settings.UiDimmingGreen),
@@ -590,9 +598,18 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void RunCpuOptimization()
     {
-        if (_lastSnapshot is not null)
+        if (_lastSnapshot is null)
+        {
+            return;
+        }
+
+        try
         {
             _optimizationService.OptimizeCpu(_lastSnapshot.Processes, userRequested: true);
+        }
+        catch (Exception ex)
+        {
+            AddLog("Warn", L.Format("LogCpuOptimizationFailed", ex.Message));
         }
     }
 
@@ -723,12 +740,28 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         if (e.PropertyName is nameof(AppSettings.UiDimmingOpacityPercent)
             or nameof(AppSettings.UiDimmingRed)
             or nameof(AppSettings.UiDimmingGreen)
-            or nameof(AppSettings.UiDimmingBlue))
+            or nameof(AppSettings.UiDimmingBlue)
+            or nameof(AppSettings.UiColorFilterRedPercent)
+            or nameof(AppSettings.UiColorFilterGreenPercent)
+            or nameof(AppSettings.UiColorFilterBluePercent)
+            or nameof(AppSettings.UiColorFilterContrastPercent)
+            or nameof(AppSettings.UiColorFilterBrightnessPercent)
+            or nameof(AppSettings.UiColorFilterGammaPercent)
+            or nameof(AppSettings.UiColorFilterTemperature)
+            or nameof(AppSettings.UiColorFilterTint))
         {
             OnPropertyChanged(nameof(UiDimmingOpacityText));
             OnPropertyChanged(nameof(UiDimmingRedText));
             OnPropertyChanged(nameof(UiDimmingGreenText));
             OnPropertyChanged(nameof(UiDimmingBlueText));
+            OnPropertyChanged(nameof(UiColorFilterRedPercentText));
+            OnPropertyChanged(nameof(UiColorFilterGreenPercentText));
+            OnPropertyChanged(nameof(UiColorFilterBluePercentText));
+            OnPropertyChanged(nameof(UiColorFilterContrastPercentText));
+            OnPropertyChanged(nameof(UiColorFilterBrightnessPercentText));
+            OnPropertyChanged(nameof(UiColorFilterGammaPercentText));
+            OnPropertyChanged(nameof(UiColorFilterTemperatureText));
+            OnPropertyChanged(nameof(UiColorFilterTintText));
             OnPropertyChanged(nameof(UiDimmingPreviewBrush));
         }
 
@@ -1225,9 +1258,62 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         var sessions = _starCitizenSessionHistoryService.Load()
             .Select(RefreshSessionLogEvidence)
             .ToList();
+        sessions = MergeLogDiscoveredStarCitizenSessions(sessions);
         Replace(StarCitizenSessions, sessions);
         SaveStarCitizenSessions();
         OnPropertyChanged(nameof(StarCitizenSessionTotalsText));
+    }
+
+    private List<StarCitizenSessionView> MergeLogDiscoveredStarCitizenSessions(List<StarCitizenSessionView> sessions)
+    {
+        var importSince = sessions.Count == 0
+            ? DateTime.UtcNow.AddDays(-14)
+            : sessions.Min(session => session.StartedUtc).AddDays(-1);
+        var discovered = _starCitizenLogService.DiscoverSessions(Settings.StarCitizenPath, importSince);
+        var added = 0;
+
+        foreach (var session in discovered)
+        {
+            if (sessions.Any(existing => IsSameStarCitizenSession(existing, session)))
+            {
+                continue;
+            }
+
+            var evidence = session.Evidence.Take(8).ToList();
+            sessions.Add(new StarCitizenSessionView
+            {
+                StartedUtc = session.StartedUtc,
+                EndedUtc = session.EndedUtc,
+                Started = session.StartedUtc.ToLocalTime(),
+                Ended = session.EndedUtc.ToLocalTime(),
+                StartedText = session.StartedUtc.ToLocalTime().ToString("g"),
+                EndedText = session.EndedUtc.ToLocalTime().ToString("g"),
+                DurationText = (session.EndedUtc - session.StartedUtc).ToString(@"hh\:mm\:ss"),
+                PeakSummary = L["StarCitizenSessionLogOnlyPeak"],
+                ExitSummary = L.Format("StarCitizenExitShortSummary", L[session.StatusKey]),
+                LogEvidenceSummary = evidence.Count == 0
+                    ? L["StarCitizenExitNoEvidence"]
+                    : string.Join(Environment.NewLine, evidence),
+                LogEvidence = evidence
+            });
+            added++;
+        }
+
+        if (added > 0)
+        {
+            AddLog("Info", L.Format("LogStarCitizenSessionsImported", added));
+        }
+
+        return sessions
+            .OrderByDescending(session => session.StartedUtc)
+            .Take(250)
+            .ToList();
+    }
+
+    private static bool IsSameStarCitizenSession(StarCitizenSessionView existing, StarCitizenLogSession discovered)
+    {
+        return Math.Abs((existing.StartedUtc - discovered.StartedUtc).TotalMinutes) <= 3
+            || Math.Abs((existing.EndedUtc - discovered.EndedUtc).TotalMinutes) <= 3;
     }
 
     private StarCitizenSessionView RefreshSessionLogEvidence(StarCitizenSessionView session)

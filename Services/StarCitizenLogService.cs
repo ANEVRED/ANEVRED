@@ -118,6 +118,30 @@ public sealed class StarCitizenLogService
         }
     }
 
+    public IReadOnlyList<StarCitizenLogSession> DiscoverSessions(string configuredPath, DateTime importSinceUtc)
+    {
+        var sessions = new List<StarCitizenLogSession>();
+        var logPaths = FindLogCandidates(configuredPath)
+            .Where(File.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(path => new FileInfo(path).LastWriteTimeUtc)
+            .Take(40)
+            .ToList();
+
+        foreach (var logPath in logPaths)
+        {
+            var session = TryReadSessionFromLog(logPath, importSinceUtc);
+            if (session is not null)
+            {
+                sessions.Add(session);
+            }
+        }
+
+        return sessions
+            .OrderByDescending(session => session.StartedUtc)
+            .ToList();
+    }
+
     private static IEnumerable<string> FindLogCandidates(string configuredPath)
     {
         if (!string.IsNullOrWhiteSpace(configuredPath))
@@ -275,6 +299,66 @@ public sealed class StarCitizenLogService
         catch
         {
             return [];
+        }
+    }
+
+    private static StarCitizenLogSession? TryReadSessionFromLog(string logPath, DateTime importSinceUtc)
+    {
+        try
+        {
+            var lines = File.ReadLines(logPath).ToList();
+            DateTime? startedUtc = null;
+            DateTime? endedUtc = null;
+
+            foreach (var line in lines)
+            {
+                var timestamp = TryReadTimestamp(line);
+                if (timestamp is null)
+                {
+                    continue;
+                }
+
+                if (startedUtc is null && line.Contains("OnClientEnteredGame", StringComparison.OrdinalIgnoreCase))
+                {
+                    startedUtc = timestamp.Value;
+                }
+
+                if (line.Contains("CCIGBroker::FastShutdown", StringComparison.OrdinalIgnoreCase)
+                    || line.Contains("System Fast Shutdown", StringComparison.OrdinalIgnoreCase)
+                    || line.Contains("<SystemQuit>", StringComparison.OrdinalIgnoreCase))
+                {
+                    endedUtc = timestamp.Value;
+                }
+            }
+
+            if (startedUtc is null
+                || endedUtc is null
+                || endedUtc.Value < importSinceUtc
+                || endedUtc.Value <= startedUtc.Value.AddSeconds(20))
+            {
+                return null;
+            }
+
+            var windowStart = startedUtc.Value.AddSeconds(-30);
+            var windowEnd = endedUtc.Value.AddSeconds(30);
+            var windowLines = lines
+                .Where(line => IsInTimeWindow(line, windowStart, windowEnd))
+                .TakeLast(500)
+                .ToList();
+            var evidence = FindEvidence(windowLines);
+
+            return new StarCitizenLogSession
+            {
+                StartedUtc = startedUtc.Value,
+                EndedUtc = endedUtc.Value,
+                StatusKey = Classify(evidence, windowLines),
+                LogPath = logPath,
+                Evidence = evidence.Take(8).ToArray()
+            };
+        }
+        catch
+        {
+            return null;
         }
     }
 

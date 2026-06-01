@@ -37,6 +37,7 @@ public partial class MainWindow : Window
 
     private readonly MainViewModel _viewModel;
     private readonly Services.ScreenTranslationService _screenTranslationService;
+    private readonly DisplayColorFilterService _displayColorFilterService = new();
     private readonly System.Windows.Threading.DispatcherTimer _screenTranslationTimer = new();
     private readonly System.Windows.Threading.DispatcherTimer _uiDimmingAutoTimer = new();
     private readonly LowLevelKeyboardProc _keyboardProc;
@@ -94,6 +95,7 @@ public partial class MainWindow : Window
             RestoreMainWindowPlacement();
             UpdateUiDimmingAutoTimer();
             ApplyUiDimmingOverlay();
+            ApplyDisplayColorFilter();
         };
         StateChanged += (_, _) => RememberMainWindowPlacement();
         LocationChanged += (_, _) => RememberMainWindowPlacement();
@@ -114,11 +116,13 @@ public partial class MainWindow : Window
     {
         _uiDimmingAutoTimer.Stop();
         _uiDimmingOverlay?.Hide();
+        _displayColorFilterService.Restore();
         UnregisterGlobalHotkeys();
         UninstallKeyboardHook();
         _source?.RemoveHook(WndProc);
         _screenTranslationTimer.Stop();
         _screenTranslationService.Dispose();
+        _displayColorFilterService.Dispose();
         _translationOverlay?.Close();
         _uiDimmingOverlay?.Close();
         _notifyIcon?.Dispose();
@@ -609,6 +613,288 @@ public partial class MainWindow : Window
             ApplyUiDimmingOverlay();
         }
 
+        if (e.PropertyName is nameof(AppSettings.UiColorFilterEnabled)
+            or nameof(AppSettings.UiColorFilterRedPercent)
+            or nameof(AppSettings.UiColorFilterGreenPercent)
+            or nameof(AppSettings.UiColorFilterBluePercent)
+            or nameof(AppSettings.UiColorFilterContrastPercent)
+            or nameof(AppSettings.UiColorFilterBrightnessPercent)
+            or nameof(AppSettings.UiColorFilterGammaPercent)
+            or nameof(AppSettings.UiColorFilterTemperature)
+            or nameof(AppSettings.UiColorFilterTint))
+        {
+            ApplyDisplayColorFilter();
+        }
+
+    }
+
+    private void ApplyDisplayColorFilter()
+    {
+        var settings = _viewModel.Settings;
+        if (!settings.UiColorFilterEnabled)
+        {
+            _displayColorFilterService.Restore();
+            return;
+        }
+
+        var applied = _displayColorFilterService.Apply(
+            settings.UiColorFilterRedPercent,
+            settings.UiColorFilterGreenPercent,
+            settings.UiColorFilterBluePercent,
+            settings.UiColorFilterContrastPercent,
+            settings.UiColorFilterBrightnessPercent,
+            settings.UiColorFilterGammaPercent,
+            settings.UiColorFilterTemperature,
+            settings.UiColorFilterTint,
+            ResolveUiDimmingTargetBounds());
+        if (!applied)
+        {
+            _viewModel.AddDiagnosticLog("Warn", "Display color filter could not be applied.");
+        }
+    }
+
+    private void ApplyColorFilterPresetClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string preset })
+        {
+            return;
+        }
+
+        var settings = _viewModel.Settings;
+        settings.UiColorFilterEnabled = true;
+
+        switch (preset)
+        {
+            case "Film":
+                settings.UiColorFilterRedPercent = 104;
+                settings.UiColorFilterGreenPercent = 100;
+                settings.UiColorFilterBluePercent = 96;
+                settings.UiColorFilterContrastPercent = 104;
+                settings.UiColorFilterBrightnessPercent = 2;
+                settings.UiColorFilterGammaPercent = 103;
+                settings.UiColorFilterTemperature = 12;
+                settings.UiColorFilterTint = 2;
+                break;
+            case "EyeProtect":
+                settings.UiColorFilterRedPercent = 100;
+                settings.UiColorFilterGreenPercent = 92;
+                settings.UiColorFilterBluePercent = 82;
+                settings.UiColorFilterContrastPercent = 98;
+                settings.UiColorFilterBrightnessPercent = -2;
+                settings.UiColorFilterGammaPercent = 98;
+                settings.UiColorFilterTemperature = 18;
+                settings.UiColorFilterTint = -4;
+                break;
+            case "Screenshot":
+                settings.UiColorFilterRedPercent = 100;
+                settings.UiColorFilterGreenPercent = 100;
+                settings.UiColorFilterBluePercent = 100;
+                settings.UiColorFilterContrastPercent = 100;
+                settings.UiColorFilterBrightnessPercent = 0;
+                settings.UiColorFilterGammaPercent = 100;
+                settings.UiColorFilterTemperature = 0;
+                settings.UiColorFilterTint = 0;
+                break;
+            default:
+                settings.UiColorFilterRedPercent = 100;
+                settings.UiColorFilterGreenPercent = 96;
+                settings.UiColorFilterBluePercent = 102;
+                settings.UiColorFilterContrastPercent = 106;
+                settings.UiColorFilterBrightnessPercent = 3;
+                settings.UiColorFilterGammaPercent = 106;
+                settings.UiColorFilterTemperature = -4;
+                settings.UiColorFilterTint = 0;
+                break;
+        }
+
+        ApplyDisplayColorFilter();
+    }
+
+    private void AutoGradeColorFilterClick(object sender, RoutedEventArgs e)
+    {
+        var settings = _viewModel.Settings;
+        var targetBounds = ResolveUiDimmingTargetBounds();
+        if (targetBounds.Width <= 0 || targetBounds.Height <= 0)
+        {
+            return;
+        }
+
+        var wasColorFilterEnabled = settings.UiColorFilterEnabled;
+        var wasDimmingVisible = _uiDimmingOverlay?.IsVisible == true;
+
+        try
+        {
+            if (wasColorFilterEnabled)
+            {
+                _displayColorFilterService.Restore();
+            }
+
+            if (wasDimmingVisible)
+            {
+                _uiDimmingOverlay!.Hide();
+            }
+
+            Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+            Thread.Sleep(90);
+
+            var suggestion = AnalyzeColorGradeSuggestion(targetBounds);
+            settings.UiColorFilterEnabled = true;
+            settings.UiColorFilterRedPercent = suggestion.RedPercent;
+            settings.UiColorFilterGreenPercent = suggestion.GreenPercent;
+            settings.UiColorFilterBluePercent = suggestion.BluePercent;
+            settings.UiColorFilterContrastPercent = suggestion.ContrastPercent;
+            settings.UiColorFilterBrightnessPercent = suggestion.BrightnessPercent;
+            settings.UiColorFilterGammaPercent = suggestion.GammaPercent;
+            settings.UiColorFilterTemperature = suggestion.Temperature;
+            settings.UiColorFilterTint = suggestion.Tint;
+            ApplyDisplayColorFilter();
+
+            _viewModel.AddDiagnosticLog(
+                "Info",
+                $"Color auto grade: RGB {suggestion.RedPercent:0}/{suggestion.GreenPercent:0}/{suggestion.BluePercent:0}, contrast {suggestion.ContrastPercent:0}, brightness {suggestion.BrightnessPercent:+0;-0;0}, midtones {suggestion.GammaPercent:0}, temp {suggestion.Temperature:+0;-0;0}, tint {suggestion.Tint:+0;-0;0}.");
+        }
+        catch (Exception ex)
+        {
+            _viewModel.AddDiagnosticLog("Warn", "Color auto grade failed: " + ex.Message);
+            settings.UiColorFilterEnabled = wasColorFilterEnabled;
+            ApplyDisplayColorFilter();
+        }
+        finally
+        {
+            if (wasDimmingVisible)
+            {
+                ApplyUiDimmingOverlay();
+            }
+        }
+    }
+
+    private void ResetColorFilterClick(object sender, RoutedEventArgs e)
+    {
+        ResetColorFilterSettings();
+        ApplyDisplayColorFilter();
+    }
+
+    private void ResetColorFilterSettings()
+    {
+        var settings = _viewModel.Settings;
+        settings.UiColorFilterEnabled = false;
+        settings.UiColorFilterRedPercent = 100;
+        settings.UiColorFilterGreenPercent = 100;
+        settings.UiColorFilterBluePercent = 100;
+        settings.UiColorFilterContrastPercent = 100;
+        settings.UiColorFilterBrightnessPercent = 0;
+        settings.UiColorFilterGammaPercent = 100;
+        settings.UiColorFilterTemperature = 0;
+        settings.UiColorFilterTint = 0;
+    }
+
+    private ColorGradeSuggestion AnalyzeColorGradeSuggestion(Drawing.Rectangle bounds)
+    {
+        using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height);
+        using (var graphics = Drawing.Graphics.FromImage(bitmap))
+        {
+            graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+        }
+
+        var stepX = Math.Max(1, bitmap.Width / 120);
+        var stepY = Math.Max(1, bitmap.Height / 68);
+        var samples = new List<double>(9000);
+        double red = 0;
+        double green = 0;
+        double blue = 0;
+        var brightPixels = 0;
+        var darkPixels = 0;
+        var count = 0;
+
+        for (var y = 0; y < bitmap.Height; y += stepY)
+        {
+            for (var x = 0; x < bitmap.Width; x += stepX)
+            {
+                var pixel = bitmap.GetPixel(x, y);
+                var luma = 0.2126 * pixel.R + 0.7152 * pixel.G + 0.0722 * pixel.B;
+                samples.Add(luma);
+                red += pixel.R;
+                green += pixel.G;
+                blue += pixel.B;
+                if (luma >= 220)
+                {
+                    brightPixels++;
+                }
+
+                if (luma <= 28)
+                {
+                    darkPixels++;
+                }
+
+                count++;
+            }
+        }
+
+        if (count == 0)
+        {
+            return ColorGradeSuggestion.Neutral;
+        }
+
+        samples.Sort();
+        red /= count;
+        green /= count;
+        blue /= count;
+        var mean = samples.Average();
+        var p10 = Percentile(samples, 0.10);
+        var p90 = Percentile(samples, 0.90);
+        var tonalRange = p90 - p10;
+        var brightRatio = brightPixels / (double)count;
+        var darkRatio = darkPixels / (double)count;
+
+        var brightness = Math.Clamp((96 - mean) / 9d, -8, 12);
+        if (brightRatio > 0.10)
+        {
+            brightness -= Math.Min(5, brightRatio * 28);
+        }
+
+        var contrast = 100d;
+        if (tonalRange < 82)
+        {
+            contrast += Math.Clamp((82 - tonalRange) / 5d, 0, 12);
+        }
+        else if (tonalRange > 148 || darkRatio > 0.42)
+        {
+            contrast -= Math.Clamp((tonalRange - 148) / 10d, 0, 6);
+        }
+
+        var gamma = 100d + Math.Clamp((88 - mean) / 3.5d, -8, 16);
+        if (darkRatio > 0.35)
+        {
+            gamma += Math.Min(8, darkRatio * 14);
+        }
+
+        var temperature = Math.Clamp((blue - red) / 3.5d, -14, 14);
+        var tint = Math.Clamp((green - ((red + blue) / 2d)) / 3.5d, -12, 12);
+
+        var redPercent = 100d;
+        var greenPercent = Math.Clamp(100 - Math.Max(0, tint) * 0.25, 96, 104);
+        var bluePercent = Math.Clamp(100 - Math.Max(0, temperature) * 0.20, 96, 104);
+
+        return new ColorGradeSuggestion(
+            redPercent,
+            greenPercent,
+            bluePercent,
+            Math.Clamp(contrast, 92, 112),
+            Math.Clamp(brightness, -10, 12),
+            Math.Clamp(gamma, 92, 116),
+            Math.Clamp(temperature, -14, 14),
+            Math.Clamp(tint, -12, 12));
+    }
+
+    private static double Percentile(IReadOnlyList<double> sortedSamples, double percentile)
+    {
+        if (sortedSamples.Count == 0)
+        {
+            return 0;
+        }
+
+        var index = (int)Math.Clamp(Math.Round((sortedSamples.Count - 1) * percentile), 0, sortedSamples.Count - 1);
+        return sortedSamples[index];
     }
 
     private void ApplyUiDimmingOverlay()
@@ -884,6 +1170,19 @@ public partial class MainWindow : Window
     }
 
     private readonly record struct DimmingSuggestion(int Red, int Green, int Blue, double OpacityPercent);
+
+    private readonly record struct ColorGradeSuggestion(
+        double RedPercent,
+        double GreenPercent,
+        double BluePercent,
+        double ContrastPercent,
+        double BrightnessPercent,
+        double GammaPercent,
+        double Temperature,
+        double Tint)
+    {
+        public static ColorGradeSuggestion Neutral { get; } = new(100, 100, 100, 100, 0, 100, 0, 0);
+    }
 
     private void CaptureHotkeyButtonClick(object sender, RoutedEventArgs e)
     {

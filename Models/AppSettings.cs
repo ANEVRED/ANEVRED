@@ -42,6 +42,15 @@ public sealed class AppSettings : INotifyPropertyChanged
     private int _uiDimmingRed;
     private int _uiDimmingGreen;
     private int _uiDimmingBlue;
+    private bool _uiColorFilterEnabled;
+    private double _uiColorFilterRedPercent = 100;
+    private double _uiColorFilterGreenPercent = 65;
+    private double _uiColorFilterBluePercent = 100;
+    private double _uiColorFilterContrastPercent = 100;
+    private double _uiColorFilterBrightnessPercent;
+    private double _uiColorFilterGammaPercent = 100;
+    private double _uiColorFilterTemperature;
+    private double _uiColorFilterTint;
     private string _mainWindowState = "Maximized";
     private double _mainWindowLeft = -1;
     private double _mainWindowTop = -1;
@@ -264,6 +273,60 @@ public sealed class AppSettings : INotifyPropertyChanged
     {
         get => _uiDimmingBlue;
         set => SetField(ref _uiDimmingBlue, Math.Clamp(value, 0, 255));
+    }
+
+    public bool UiColorFilterEnabled
+    {
+        get => _uiColorFilterEnabled;
+        set => SetField(ref _uiColorFilterEnabled, value);
+    }
+
+    public double UiColorFilterRedPercent
+    {
+        get => _uiColorFilterRedPercent;
+        set => SetField(ref _uiColorFilterRedPercent, Math.Clamp(value, 50, 120));
+    }
+
+    public double UiColorFilterGreenPercent
+    {
+        get => _uiColorFilterGreenPercent;
+        set => SetField(ref _uiColorFilterGreenPercent, Math.Clamp(value, 50, 120));
+    }
+
+    public double UiColorFilterBluePercent
+    {
+        get => _uiColorFilterBluePercent;
+        set => SetField(ref _uiColorFilterBluePercent, Math.Clamp(value, 50, 120));
+    }
+
+    public double UiColorFilterContrastPercent
+    {
+        get => _uiColorFilterContrastPercent;
+        set => SetField(ref _uiColorFilterContrastPercent, Math.Clamp(value, 50, 150));
+    }
+
+    public double UiColorFilterBrightnessPercent
+    {
+        get => _uiColorFilterBrightnessPercent;
+        set => SetField(ref _uiColorFilterBrightnessPercent, Math.Clamp(value, -50, 50));
+    }
+
+    public double UiColorFilterGammaPercent
+    {
+        get => _uiColorFilterGammaPercent;
+        set => SetField(ref _uiColorFilterGammaPercent, Math.Clamp(value, 50, 150));
+    }
+
+    public double UiColorFilterTemperature
+    {
+        get => _uiColorFilterTemperature;
+        set => SetField(ref _uiColorFilterTemperature, Math.Clamp(value, -50, 50));
+    }
+
+    public double UiColorFilterTint
+    {
+        get => _uiColorFilterTint;
+        set => SetField(ref _uiColorFilterTint, Math.Clamp(value, -50, 50));
     }
 
     public string MainWindowState

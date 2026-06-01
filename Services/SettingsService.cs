@@ -56,6 +56,15 @@ public sealed class SettingsService
             settings.UiDimmingRed = settings.UiDimmingRed;
             settings.UiDimmingGreen = settings.UiDimmingGreen;
             settings.UiDimmingBlue = settings.UiDimmingBlue;
+            settings.UiColorFilterEnabled = settings.UiColorFilterEnabled;
+            settings.UiColorFilterRedPercent = settings.UiColorFilterRedPercent;
+            settings.UiColorFilterGreenPercent = settings.UiColorFilterGreenPercent;
+            settings.UiColorFilterBluePercent = settings.UiColorFilterBluePercent;
+            settings.UiColorFilterContrastPercent = settings.UiColorFilterContrastPercent;
+            settings.UiColorFilterBrightnessPercent = settings.UiColorFilterBrightnessPercent;
+            settings.UiColorFilterGammaPercent = settings.UiColorFilterGammaPercent;
+            settings.UiColorFilterTemperature = settings.UiColorFilterTemperature;
+            settings.UiColorFilterTint = settings.UiColorFilterTint;
             settings.MainWindowState = settings.MainWindowState;
             settings.MainWindowWidth = settings.MainWindowWidth;
             settings.MainWindowHeight = settings.MainWindowHeight;

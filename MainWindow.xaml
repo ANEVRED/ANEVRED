@@ -92,7 +92,7 @@
                     <ComboBox ItemsSource="{Binding SupportedLanguages}" DisplayMemberPath="DisplayName" SelectedValuePath="Code" SelectedValue="{Binding CurrentLanguage}" Margin="0,0,0,12"/>
                     <TextBlock Text="{Binding L[Theme]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
                     <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding ThemeMode}" Margin="0,0,0,14"/>
-                    <TextBlock Text="v0.3.1" Foreground="{DynamicResource DisabledTextBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                    <TextBlock Text="v0.3.2" Foreground="{DynamicResource DisabledTextBrush}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -380,6 +380,101 @@
                             <TextBlock Text="{Binding L[GamingMode]}" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,12"/>
                             <Button Style="{StaticResource PrimaryButtonStyle}" Content="{Binding L[EnableGameMode]}" Command="{Binding EnableGameModeCommand}" Width="220" HorizontalAlignment="Left"/>
                             <TextBlock Text="{Binding L[PerformanceBudgetNote]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="{Binding L[UiColorFilter]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <CheckBox Content="{Binding L[UiColorFilterEnabled]}" IsChecked="{Binding Settings.UiColorFilterEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                            <TextBlock Text="{Binding L[UiColorFilterPresets]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
+                            <UniformGrid Columns="5" Margin="0,0,0,10">
+                                <Button Content="{Binding L[UiColorFilterPresetGame]}" Tag="Game" Click="ApplyColorFilterPresetClick" Margin="0,0,6,0"/>
+                                <Button Content="{Binding L[UiColorFilterPresetFilm]}" Tag="Film" Click="ApplyColorFilterPresetClick" Margin="0,0,6,0"/>
+                                <Button Content="{Binding L[UiColorFilterPresetEyeProtect]}" Tag="EyeProtect" Click="ApplyColorFilterPresetClick" Margin="0,0,6,0"/>
+                                <Button Content="{Binding L[UiColorFilterPresetScreenshot]}" Click="AutoGradeColorFilterClick" Margin="0,0,6,0"/>
+                                <Button Content="{Binding L[UiColorFilterReset]}" Click="ResetColorFilterClick"/>
+                            </UniformGrid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterRedPass]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="50" Maximum="120" Value="{Binding Settings.UiColorFilterRedPercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterRedPercentText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterGreenPass]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="50" Maximum="120" Value="{Binding Settings.UiColorFilterGreenPercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterGreenPercentText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterBluePass]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="50" Maximum="120" Value="{Binding Settings.UiColorFilterBluePercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterBluePercentText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterContrast]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="50" Maximum="150" Value="{Binding Settings.UiColorFilterContrastPercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterContrastPercentText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterBrightness]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="-50" Maximum="50" Value="{Binding Settings.UiColorFilterBrightnessPercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterBrightnessPercentText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterGamma]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="50" Maximum="150" Value="{Binding Settings.UiColorFilterGammaPercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterGammaPercentText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterTemperature]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="-50" Maximum="50" Value="{Binding Settings.UiColorFilterTemperature, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterTemperatureText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding L[UiColorFilterTint]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                <Slider Grid.Column="1" Minimum="-50" Maximum="50" Value="{Binding Settings.UiColorFilterTint, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding UiColorFilterTintText}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="{Binding L[UiColorFilterHint]}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource PanelCardStyle}">

@@ -205,6 +205,18 @@ public sealed class OptimizationService
             {
                 denied++;
             }
+            catch (ArgumentException)
+            {
+                denied++;
+            }
+            catch (NotSupportedException)
+            {
+                denied++;
+            }
+            catch (SystemException)
+            {
+                denied++;
+            }
         }
 
         _log("Info", _localizer.Format(
