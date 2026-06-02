@@ -387,11 +387,10 @@
                             <TextBlock Text="{Binding L[UiColorFilter]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
                             <CheckBox Content="{Binding L[UiColorFilterEnabled]}" IsChecked="{Binding Settings.UiColorFilterEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
                             <TextBlock Text="{Binding L[UiColorFilterPresets]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
-                            <UniformGrid Columns="5" Margin="0,0,0,10">
+                            <UniformGrid Columns="4" Margin="0,0,0,10">
                                 <Button Content="{Binding L[UiColorFilterPresetGame]}" Tag="Game" Click="ApplyColorFilterPresetClick" Margin="0,0,6,0"/>
                                 <Button Content="{Binding L[UiColorFilterPresetFilm]}" Tag="Film" Click="ApplyColorFilterPresetClick" Margin="0,0,6,0"/>
                                 <Button Content="{Binding L[UiColorFilterPresetEyeProtect]}" Tag="EyeProtect" Click="ApplyColorFilterPresetClick" Margin="0,0,6,0"/>
-                                <Button Content="{Binding L[UiColorFilterPresetScreenshot]}" Click="AutoGradeColorFilterClick" Margin="0,0,6,0"/>
                                 <Button Content="{Binding L[UiColorFilterReset]}" Click="ResetColorFilterClick"/>
                             </UniformGrid>
                             <Grid Margin="0,0,0,8">

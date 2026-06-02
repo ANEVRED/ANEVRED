@@ -297,7 +297,6 @@
   "UiColorFilterPresetGame": "Игра",
   "UiColorFilterPresetFilm": "Фильм",
   "UiColorFilterPresetEyeProtect": "Защита",
-  "UiColorFilterPresetScreenshot": "Скриншот",
   "UiColorFilterReset": "Назад",
   "UiColorFilterHint": "Экспериментальный фильтр дисплея Windows. Ползунки каналов используют диапазон 50-120%, потому что более низкие значения Windows не всегда применяет стабильно. Фильтр влияет на выбранный дисплей и сбрасывается при отключении или выходе из ANEVRED.",
   "PrivacyDataTitle": "Конфиденциальность оверлеев и перевода",

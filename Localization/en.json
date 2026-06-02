@@ -297,7 +297,6 @@
   "UiColorFilterPresetGame": "Game",
   "UiColorFilterPresetFilm": "Film",
   "UiColorFilterPresetEyeProtect": "Protect",
-  "UiColorFilterPresetScreenshot": "Screenshot",
   "UiColorFilterReset": "Back",
   "UiColorFilterHint": "Experimental Windows display filter. Channel sliders use 50-120% because lower values can make Windows stop applying the filter reliably. It affects the whole display and is restored when disabled or when ANEVRED exits.",
   "PrivacyDataTitle": "Privacy for overlays and translation",

@@ -297,7 +297,6 @@
   "UiColorFilterPresetGame": "Game",
   "UiColorFilterPresetFilm": "Film",
   "UiColorFilterPresetEyeProtect": "Protect",
-  "UiColorFilterPresetScreenshot": "Screenshot",
   "UiColorFilterReset": "Zurueck",
   "UiColorFilterHint": "Experimenteller Windows-Displayfilter. Die Kanal-Schieber nutzen 50-120%, weil niedrigere Werte von Windows nicht immer stabil angewendet werden. Wirkt auf das ganze Display und wird beim Deaktivieren oder Beenden von ANEVRED zurueckgesetzt.",
   "PrivacyDataTitle": "Datenschutz bei Overlays und Uebersetzung",

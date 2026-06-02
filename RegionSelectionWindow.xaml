@@ -6,6 +6,7 @@
         Background="#55000000"
         ShowInTaskbar="False"
         ShowActivated="False"
+        WindowStartupLocation="Manual"
         Topmost="True"
         ResizeMode="NoResize"
         Cursor="Cross">

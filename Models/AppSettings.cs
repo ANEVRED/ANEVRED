@@ -212,13 +212,13 @@ public sealed class AppSettings : INotifyPropertyChanged
     public double ScreenTranslationLeft
     {
         get => _screenTranslationLeft;
-        set => SetField(ref _screenTranslationLeft, Math.Max(0, value));
+        set => SetField(ref _screenTranslationLeft, Math.Clamp(value, -20000, 20000));
     }
 
     public double ScreenTranslationTop
     {
         get => _screenTranslationTop;
-        set => SetField(ref _screenTranslationTop, Math.Max(0, value));
+        set => SetField(ref _screenTranslationTop, Math.Clamp(value, -20000, 20000));
     }
 
     public double ScreenTranslationWidth
