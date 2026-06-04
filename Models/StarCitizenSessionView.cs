@@ -10,6 +10,10 @@ public sealed class StarCitizenSessionView
     public string EndedText { get; init; } = string.Empty;
     public string DurationText { get; init; } = string.Empty;
     public string PeakSummary { get; init; } = string.Empty;
+    public int AutoStutterCount { get; init; }
+    public int PressureSpikeCount { get; init; }
+    public int ManualEventCount { get; init; }
+    public string DetectionSummary => $"Auto stutter: {AutoStutterCount} · pressure: {PressureSpikeCount} · manual: {ManualEventCount}";
     public string ExitSummary { get; init; } = string.Empty;
     public string ExitDisplaySummary
     {

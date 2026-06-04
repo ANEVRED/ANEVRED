@@ -71,6 +71,7 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
         _viewModel.ThemeChanged += (_, _) => ApplyTheme();
         _viewModel.NotificationRequested += ShowNotification;
+        _viewModel.ConfirmationRequested += ConfirmAction;
         _viewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.TrayText))
@@ -127,9 +128,20 @@ public partial class MainWindow : Window
         _uiDimmingOverlay?.Close();
         _notifyIcon?.Dispose();
         _trayMenu?.Dispose();
+        _viewModel.ConfirmationRequested -= ConfirmAction;
         _viewModel.Settings.PropertyChanged -= SettingsPropertyChanged;
         _viewModel.Dispose();
         base.OnClosed(e);
+    }
+
+    private bool ConfirmAction(string title, string message)
+    {
+        var dialog = new ConfirmationDialogWindow(title, message, _viewModel.L["Confirm"], _viewModel.L["Cancel"])
+        {
+            Owner = this
+        };
+
+        return dialog.ShowDialog() == true;
     }
 
     private void RestoreMainWindowPlacement()

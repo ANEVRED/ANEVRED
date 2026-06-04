@@ -1,0 +1,92 @@
+<Window x:Class="ANEVRED.ConfirmationDialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding DialogTitle, RelativeSource={RelativeSource Self}}"
+        Width="480"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        Background="Transparent"
+        AllowsTransparency="True">
+    <Border Background="{DynamicResource WindowBackgroundBrush}"
+            BorderBrush="{DynamicResource AccentBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="18">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="28" ShadowDepth="0" Opacity="0.55"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Width="34"
+                        Height="34"
+                        CornerRadius="7"
+                        Background="#22F59E0B"
+                        BorderBrush="{DynamicResource CpuAccentBrush}"
+                        BorderThickness="1"
+                        VerticalAlignment="Top">
+                    <TextBlock Text="!"
+                               Foreground="{DynamicResource CpuAccentBrush}"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextWrapping="NoWrap"/>
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="12,0,12,0">
+                    <TextBlock Text="{Binding DialogTitle, RelativeSource={RelativeSource AncestorType=Window}}"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"/>
+                    <TextBlock Text="{Binding Message, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Margin="0,8,0,0"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               LineHeight="19"/>
+                </StackPanel>
+
+                <Button Grid.Column="2"
+                        Content="×"
+                        Width="30"
+                        Height="30"
+                        MinHeight="30"
+                        Padding="0"
+                        FontSize="18"
+                        Click="CancelClick"/>
+            </Grid>
+
+            <Border Grid.Row="1"
+                    Height="1"
+                    Margin="0,18,0,14"
+                    Background="{DynamicResource BorderBrushSoft}"/>
+
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button x:Name="CancelButton"
+                        Content="{Binding CancelText, RelativeSource={RelativeSource AncestorType=Window}}"
+                        MinWidth="110"
+                        Margin="0,0,8,0"
+                        Click="CancelClick"/>
+                <Button Content="{Binding ConfirmText, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        MinWidth="110"
+                        Click="ConfirmClick"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
