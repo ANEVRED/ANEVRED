@@ -262,27 +262,34 @@
                                     <RowDefinition Height="220"/>
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="{Binding L[CoreLoad]}" FontSize="16" FontWeight="SemiBold"/>
-                                <ItemsControl Grid.Row="1" ItemsSource="{Binding Cores}" Margin="0,12,0,0">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <UniformGrid Columns="2"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,0,12,8">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="58"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="44"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                                <ProgressBar Grid.Column="1" Value="{Binding UsagePercent, Mode=OneWay}" Maximum="100" Margin="6,0"/>
-                                                <TextBlock Grid.Column="2" Text="{Binding UsagePercent, StringFormat={}{0:0}%}" HorizontalAlignment="Right"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <ScrollViewer Grid.Row="1" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding Cores}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Columns="2"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Margin" Value="0,0,12,8"/>
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Height="24">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="58"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="44"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <ProgressBar Grid.Column="1" Value="{Binding UsagePercent, Mode=OneWay}" Maximum="100" Margin="6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding UsagePercent, StringFormat={}{0:0}%}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
                             </Grid>
                         </Border>
                     </Grid>
@@ -385,7 +392,7 @@
                     <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="{Binding L[UiColorFilter]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                            <CheckBox Content="{Binding L[UiColorFilterEnabled]}" IsChecked="{Binding Settings.UiColorFilterEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                            <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[UiColorFilterEnabled]}" IsChecked="{Binding Settings.UiColorFilterEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
                             <TextBlock Text="{Binding L[UiColorFilterPresets]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
                             <UniformGrid Columns="4" Margin="0,0,0,10">
                                 <Button Content="{Binding L[UiColorFilterPresetGame]}" Tag="Game" Click="ApplyColorFilterPresetClick" Margin="0,0,6,0"/>
@@ -784,10 +791,33 @@
                         <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,8,0">
                             <StackPanel>
                                 <TextBlock Text="{Binding L[Settings]}" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,12"/>
-                                <CheckBox Content="{Binding L[AutoMode]}" IsChecked="{Binding Settings.AutoModeEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                                <CheckBox Content="{Binding L[LocalLearning]}" IsChecked="{Binding Settings.LocalLearningEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                                <CheckBox Content="{Binding L[PrivacyMaximum]}" IsChecked="{Binding Settings.PrivacyMaximumMode, Mode=TwoWay}" Margin="0,0,0,8"/>
-                                <CheckBox Content="{Binding L[Autostart]}" IsChecked="{Binding Settings.StartWithWindows, Mode=TwoWay}" Margin="0,0,0,12"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[AutoMode]}" IsChecked="{Binding Settings.AutoModeEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[LocalLearning]}" IsChecked="{Binding Settings.LocalLearningEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[PrivacyMaximum]}" IsChecked="{Binding Settings.PrivacyMaximumMode, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[Autostart]}" IsChecked="{Binding Settings.StartWithWindows, Mode=TwoWay}" Margin="0,0,0,12"/>
+                                <Separator Margin="0,6,0,12"/>
+                                <TextBlock Text="{Binding L[FeatureSettings]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock Text="{Binding L[FeatureSettingsHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding FeatureToggles}" Margin="0,0,0,12">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Style="{StaticResource FeatureToggleCardStyle}"
+                                                      IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                      Tag="{Binding Definition.Icon}">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"/>
+                                                    <TextBlock Text="ANEVRED MODULE" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Separator Margin="0,0,0,12"/>
                                 <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="190"/>
@@ -862,7 +892,7 @@
                                     <TextBlock Text="{Binding StarCitizenLogPathText}" VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                                     <Button Grid.Column="1" Content="{Binding L[ChooseFolder]}" Click="BrowseStarCitizenPathClick"/>
                                 </Grid>
-                                <CheckBox Content="{Binding L[EnableHotkeys]}" IsChecked="{Binding Settings.StarCitizenHotkeysEnabled, Mode=TwoWay}" Margin="0,0,0,12"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[EnableHotkeys]}" IsChecked="{Binding Settings.StarCitizenHotkeysEnabled, Mode=TwoWay}" Margin="0,0,0,12"/>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="130"/>
@@ -897,8 +927,8 @@
                                 <TextBlock Text="{Binding HotkeyStatusText}" Foreground="{DynamicResource AccentBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                                 <Separator Margin="0,12,0,12"/>
                                 <TextBlock Text="{Binding L[ScreenTranslation]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <CheckBox Content="{Binding L[ScreenTranslationEnabled]}" IsChecked="{Binding Settings.ScreenTranslationEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                                <CheckBox Content="{Binding L[ScreenTranslationAutoRefresh]}" IsChecked="{Binding Settings.ScreenTranslationAutoRefresh, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[ScreenTranslationEnabled]}" IsChecked="{Binding Settings.ScreenTranslationEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[ScreenTranslationAutoRefresh]}" IsChecked="{Binding Settings.ScreenTranslationAutoRefresh, Mode=TwoWay}" Margin="0,0,0,8"/>
                                 <TextBlock Text="{Binding L[TranslationProviderChromeSelected]}" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -961,8 +991,8 @@
                                 <TextBlock Text="{Binding L[ScreenTranslationHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                                 <Separator Margin="0,12,0,12"/>
                                 <TextBlock Text="{Binding L[UiDimming]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <CheckBox Content="{Binding L[UiDimmingEnabled]}" IsChecked="{Binding Settings.UiDimmingEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                                <CheckBox Content="{Binding L[UiDimmingAutoTune]}" IsChecked="{Binding Settings.UiDimmingAutoTuneEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[UiDimmingEnabled]}" IsChecked="{Binding Settings.UiDimmingEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[UiDimmingAutoTune]}" IsChecked="{Binding Settings.UiDimmingAutoTuneEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="130"/>
@@ -1112,8 +1142,8 @@
                 <Border Style="{StaticResource PanelCardStyle}">
                     <StackPanel>
                         <TextBlock Text="{Binding L[AutoOptimization]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
-                        <CheckBox Content="{Binding L[AutoMode]}" IsChecked="{Binding Settings.AutoModeEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                        <CheckBox Content="{Binding L[LocalLearning]}" IsChecked="{Binding Settings.LocalLearningEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                        <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[AutoMode]}" IsChecked="{Binding Settings.AutoModeEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
+                        <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[LocalLearning]}" IsChecked="{Binding Settings.LocalLearningEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
                         <TextBlock Foreground="{DynamicResource SecondaryTextBrush}">
                             <Run Text="{Binding L[Auto], Mode=OneWay}"/>
                             <Run Text=": "/>

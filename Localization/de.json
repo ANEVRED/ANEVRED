@@ -14,6 +14,8 @@
   "SelectedProcessRule": "Aus Prozessliste geschützt",
   "ProtectionList": "Schutzliste",
   "Settings": "Einstellungen",
+  "FeatureSettings": "Feature-Sichtbarkeit",
+  "FeatureSettingsHint": "Arbeitsbereiche ein- oder ausschalten. Deaktivierte Bereiche verschwinden aus dem Menue und koennen hier wieder aktiviert werden.",
   "Logs": "Logs",
   "ScreenTranslation": "Live-Übersetzung",
   "ScreenTranslationEnabled": "Übersetzungs-Overlay aktivieren",

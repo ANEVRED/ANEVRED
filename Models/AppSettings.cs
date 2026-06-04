@@ -56,6 +56,12 @@ public sealed class AppSettings : INotifyPropertyChanged
     private double _mainWindowTop = -1;
     private double _mainWindowWidth = 1280;
     private double _mainWindowHeight = 820;
+    private bool _featureAiEnabled = true;
+    private bool _featureProcessesEnabled = true;
+    private bool _featureGamingEnabled = true;
+    private bool _featureStarCitizenEnabled = true;
+    private bool _featureHardwareEnabled = true;
+    private bool _featureLogsEnabled = true;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -359,6 +365,42 @@ public sealed class AppSettings : INotifyPropertyChanged
         set => SetField(ref _mainWindowHeight, Math.Clamp(value, 500, 3000));
     }
 
+    public bool FeatureAiEnabled
+    {
+        get => _featureAiEnabled;
+        set => SetField(ref _featureAiEnabled, value);
+    }
+
+    public bool FeatureProcessesEnabled
+    {
+        get => _featureProcessesEnabled;
+        set => SetField(ref _featureProcessesEnabled, value);
+    }
+
+    public bool FeatureGamingEnabled
+    {
+        get => _featureGamingEnabled;
+        set => SetField(ref _featureGamingEnabled, value);
+    }
+
+    public bool FeatureStarCitizenEnabled
+    {
+        get => _featureStarCitizenEnabled;
+        set => SetField(ref _featureStarCitizenEnabled, value);
+    }
+
+    public bool FeatureHardwareEnabled
+    {
+        get => _featureHardwareEnabled;
+        set => SetField(ref _featureHardwareEnabled, value);
+    }
+
+    public bool FeatureLogsEnabled
+    {
+        get => _featureLogsEnabled;
+        set => SetField(ref _featureLogsEnabled, value);
+    }
+
     public ObservableCollection<ProtectionRule> ProtectionRules { get; set; } = [];
 
     public static AppSettings CreateDefault(string language)
@@ -400,6 +442,45 @@ public sealed class AppSettings : INotifyPropertyChanged
             "Minimized" => "Minimized",
             _ => "Normal"
         };
+    }
+
+    public bool GetFeatureEnabled(string settingsPropertyName)
+    {
+        return settingsPropertyName switch
+        {
+            nameof(FeatureAiEnabled) => FeatureAiEnabled,
+            nameof(FeatureProcessesEnabled) => FeatureProcessesEnabled,
+            nameof(FeatureGamingEnabled) => FeatureGamingEnabled,
+            nameof(FeatureStarCitizenEnabled) => FeatureStarCitizenEnabled,
+            nameof(FeatureHardwareEnabled) => FeatureHardwareEnabled,
+            nameof(FeatureLogsEnabled) => FeatureLogsEnabled,
+            _ => true
+        };
+    }
+
+    public void SetFeatureEnabled(string settingsPropertyName, bool value)
+    {
+        switch (settingsPropertyName)
+        {
+            case nameof(FeatureAiEnabled):
+                FeatureAiEnabled = value;
+                break;
+            case nameof(FeatureProcessesEnabled):
+                FeatureProcessesEnabled = value;
+                break;
+            case nameof(FeatureGamingEnabled):
+                FeatureGamingEnabled = value;
+                break;
+            case nameof(FeatureStarCitizenEnabled):
+                FeatureStarCitizenEnabled = value;
+                break;
+            case nameof(FeatureHardwareEnabled):
+                FeatureHardwareEnabled = value;
+                break;
+            case nameof(FeatureLogsEnabled):
+                FeatureLogsEnabled = value;
+                break;
+        }
     }
 
 }

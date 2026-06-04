@@ -14,6 +14,8 @@
   "SelectedProcessRule": "Protected from process list",
   "ProtectionList": "Protection list",
   "Settings": "Settings",
+  "FeatureSettings": "Feature visibility",
+  "FeatureSettingsHint": "Turn work areas on or off. Disabled areas disappear from the menu, but can be enabled again here.",
   "Logs": "Logs",
   "ScreenTranslation": "Live translation",
   "ScreenTranslationEnabled": "Enable translation overlay",

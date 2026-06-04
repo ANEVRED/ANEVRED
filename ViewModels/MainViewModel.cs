@@ -121,6 +121,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _timer.Tick += async (_, _) => await RefreshAsync();
         _timer.Start();
 
+        RefreshFeatureToggles();
         RefreshNavigationItems();
         AddLog("Info", L["LogAppStarted"]);
     }
@@ -144,6 +145,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public ObservableCollection<StarCitizenEventView> StarCitizenEvents { get; } = [];
     public ObservableCollection<StarCitizenSessionView> StarCitizenSessions { get; } = [];
     public ObservableCollection<LogEntry> Logs { get; } = [];
+    public ObservableCollection<FeatureToggleViewModel> FeatureToggles { get; } = [];
 
     public IReadOnlyList<LanguageOption> SupportedLanguages { get; } =
     [
@@ -331,6 +333,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             Settings.Language = value;
             L.SetLanguage(value);
             _lastProcessRefresh = DateTime.MinValue;
+            RefreshFeatureToggles();
             RefreshNavigationItems();
             SaveSettings();
             AddLog("Info", L["LogLanguageChanged"]);
@@ -778,6 +781,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(StarCitizenLogPathText));
         }
 
+        if (e.PropertyName is not null && FeatureCatalog.OptionalFeaturePropertyNames.Contains(e.PropertyName))
+        {
+            RefreshNavigationItems();
+            EnsureCurrentViewAvailable();
+        }
+
         SaveSettings();
     }
 
@@ -855,7 +864,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void Navigate(object? parameter)
     {
-        if (parameter is string view)
+        if (parameter is string view && IsFeatureVisible(view))
         {
             CurrentView = view;
         }
@@ -1052,18 +1061,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void RefreshNavigationItems()
     {
-        Replace(NavigationItems,
-        [
-            Nav("Dashboard", L["Dashboard"], "⌂"),
-            Nav("AI", L["AiRecommendations"], "↯"),
-            Nav("Processes", L["ProcessList"], "▦"),
-            Nav("Gaming", L["GamingMode"], "🎮"),
-            Nav("StarCitizen", L["StarCitizenHub"], "☆"),
-            Nav("Hardware", L["HardwareMonitor"], "▣"),
-            Nav("Logs", L["Logs"], "≡"),
-            Nav("Settings", L["Settings"], "⚙"),
-            Nav("Info", L["AppInfo"], "i")
-        ]);
+        Replace(NavigationItems, FeatureCatalog.All
+            .Where(feature => IsFeatureVisible(feature.NavigationKey))
+            .Select(feature => Nav(feature.NavigationKey, L[feature.TitleKey], feature.Icon)));
     }
 
     private NavigationItem Nav(string key, string title, string icon)
@@ -1075,6 +1075,39 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             Icon = icon,
             IsActive = CurrentView == key
         };
+    }
+
+    private void RefreshFeatureToggles()
+    {
+        Replace(FeatureToggles, FeatureCatalog.All
+            .Where(feature => !feature.IsRequired)
+            .Select(feature => new FeatureToggleViewModel(feature, L[feature.TitleKey], Settings, HandleFeatureToggled)));
+    }
+
+    private void HandleFeatureToggled()
+    {
+        RefreshNavigationItems();
+        EnsureCurrentViewAvailable();
+    }
+
+    private void EnsureCurrentViewAvailable()
+    {
+        if (IsFeatureVisible(CurrentView))
+        {
+            return;
+        }
+
+        CurrentView = "Dashboard";
+    }
+
+    private bool IsFeatureVisible(string navigationKey)
+    {
+        var feature = FeatureCatalog.All.FirstOrDefault(item =>
+            item.NavigationKey.Equals(navigationKey, StringComparison.Ordinal));
+        return feature is null
+            || feature.IsRequired
+            || feature.SettingsPropertyName is null
+            || Settings.GetFeatureEnabled(feature.SettingsPropertyName);
     }
 
     private void UpdateRecommendations(SystemSnapshot snapshot)

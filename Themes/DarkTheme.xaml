@@ -27,8 +27,29 @@
     <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="#0E1622"/>
     <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#314157"/>
     <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#425A78"/>
-    <sys:Double x:Key="WorkspaceLogoOpacity">0.055</sys:Double>
-    <DropShadowEffect x:Key="LogoContrastEffect" Color="#60A5FA" BlurRadius="18" ShadowDepth="0" Opacity="0.22"/>
+    <SolidColorBrush x:Key="CheckBoxBackgroundBrush" Color="#111A27"/>
+    <SolidColorBrush x:Key="CheckBoxCheckedBackgroundBrush" Color="#1F5FD2"/>
+    <SolidColorBrush x:Key="CheckBoxCheckBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="FeatureCardBackgroundBrush" Color="#7C0F1A28"/>
+    <SolidColorBrush x:Key="FeatureCardHoverBrush" Color="#A2152438"/>
+    <SolidColorBrush x:Key="FeatureCardCheckedBrush" Color="#B70C2036"/>
+    <SolidColorBrush x:Key="FeatureCardHoverBorderBrush" Color="#4B6F95"/>
+    <SolidColorBrush x:Key="FeatureIconBackgroundBrush" Color="#1418273A"/>
+    <SolidColorBrush x:Key="FeatureIconInnerBrush" Color="#15101A26"/>
+    <SolidColorBrush x:Key="FeatureIconBorderBrush" Color="#30455F"/>
+    <SolidColorBrush x:Key="FeatureIconCheckedBrush" Color="#263B82F6"/>
+    <SolidColorBrush x:Key="FeatureSwitchBackgroundBrush" Color="#121A26"/>
+    <SolidColorBrush x:Key="FeatureSwitchBorderBrush" Color="#304155"/>
+    <SolidColorBrush x:Key="FeatureSwitchCheckedBrush" Color="#263B82F6"/>
+    <SolidColorBrush x:Key="FeatureSwitchKnobBrush" Color="#8A98AA"/>
+    <SolidColorBrush x:Key="FeatureSwitchKnobCheckedBrush" Color="#EAF6FF"/>
+    <SolidColorBrush x:Key="SliderTrackBrush" Color="#263448"/>
+    <SolidColorBrush x:Key="SliderTrackHoverBrush" Color="#344A64"/>
+    <SolidColorBrush x:Key="SliderFillBrush" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="SliderThumbBrush" Color="#EAF6FF"/>
+    <SolidColorBrush x:Key="SliderThumbBorderBrush" Color="#60A5FA"/>
+    <sys:Double x:Key="WorkspaceLogoOpacity">0.085</sys:Double>
+    <DropShadowEffect x:Key="LogoContrastEffect" Color="#60A5FA" BlurRadius="22" ShadowDepth="0" Opacity="0.30"/>
 
     <Thickness x:Key="PanelPadding">14</Thickness>
 
@@ -304,6 +325,343 @@
     <Style TargetType="{x:Type CheckBox}">
         <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
         <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <Grid SnapsToDevicePixels="True">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="Box"
+                                Width="14"
+                                Height="14"
+                                Background="{DynamicResource CheckBoxBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderBrushSoft}"
+                                BorderThickness="1"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center">
+                            <Path x:Name="CheckMark"
+                                  Data="M 2.4 7.2 L 5.6 10.4 L 11.8 3.4"
+                                  Stroke="{DynamicResource CheckBoxCheckBrush}"
+                                  StrokeThickness="2"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  Visibility="Collapsed"/>
+                        </Border>
+                        <ContentPresenter Grid.Column="1"
+                                          Margin="0,0,0,0"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource CheckBoxCheckedBackgroundBrush}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource CheckBoxCheckedBackgroundBrush}"/>
+                            <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                            <Setter TargetName="Box" Property="Opacity" Value="0.55"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <Style x:Key="CompactNeonSwitchCheckBoxStyle" TargetType="{x:Type CheckBox}">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <Grid SnapsToDevicePixels="True" MinHeight="28">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="48"/>
+                        </Grid.ColumnDefinitions>
+                        <ContentPresenter Grid.Column="0"
+                                          Margin="0,0,10,0"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True"/>
+                        <Border x:Name="SwitchTrack"
+                                Grid.Column="1"
+                                Width="42"
+                                Height="22"
+                                CornerRadius="11"
+                                Background="{DynamicResource FeatureSwitchBackgroundBrush}"
+                                BorderBrush="{DynamicResource FeatureSwitchBorderBrush}"
+                                BorderThickness="1"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                            <Grid>
+                                <TextBlock x:Name="OffText"
+                                           Text="OFF"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           FontSize="8"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,6,0"/>
+                                <TextBlock x:Name="OnText"
+                                           Text="ON"
+                                           Foreground="{DynamicResource CheckBoxCheckBrush}"
+                                           FontSize="8"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Left"
+                                           VerticalAlignment="Center"
+                                           Margin="7,0,0,0"
+                                           Visibility="Collapsed"/>
+                                <Ellipse x:Name="SwitchKnob"
+                                         Width="16"
+                                         Height="16"
+                                         Margin="3"
+                                         Fill="{DynamicResource FeatureSwitchKnobBrush}"
+                                         Stroke="{DynamicResource FeatureSwitchBorderBrush}"
+                                         StrokeThickness="1"
+                                         HorizontalAlignment="Left"
+                                         VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="SwitchTrack" Property="Background" Value="{DynamicResource FeatureSwitchCheckedBrush}"/>
+                            <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="SwitchKnob" Property="Fill" Value="{DynamicResource FeatureSwitchKnobCheckedBrush}"/>
+                            <Setter TargetName="SwitchKnob" Property="Stroke" Value="{DynamicResource FocusRingBrush}"/>
+                            <Setter TargetName="SwitchKnob" Property="HorizontalAlignment" Value="Right"/>
+                            <Setter TargetName="OffText" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="OnText" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                            <Setter TargetName="SwitchTrack" Property="Opacity" Value="0.55"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="FeatureToggleCardStyle" TargetType="{x:Type CheckBox}">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Margin" Value="0,0,8,8"/>
+        <Setter Property="MinWidth" Value="210"/>
+        <Setter Property="MinHeight" Value="76"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <Border x:Name="Card"
+                            Background="{DynamicResource FeatureCardBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderBrushSoft}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12"
+                            SnapsToDevicePixels="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="58"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Ellipse x:Name="StatusDot"
+                                     Grid.Column="2"
+                                     Width="7"
+                                     Height="7"
+                                     Fill="{DynamicResource SecondaryTextBrush}"
+                                     Opacity="0.45"
+                                     HorizontalAlignment="Right"
+                                     VerticalAlignment="Top"/>
+
+                            <Grid Width="38" Height="38" VerticalAlignment="Center">
+                                <Ellipse x:Name="IconHalo" Fill="{DynamicResource FeatureIconBackgroundBrush}" Stroke="{DynamicResource FeatureIconBorderBrush}" StrokeThickness="1"/>
+                                <Ellipse Width="25" Height="25" Fill="{DynamicResource FeatureIconInnerBrush}" Stroke="{DynamicResource FeatureIconBorderBrush}" StrokeThickness="1"/>
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Content="{TemplateBinding Tag}"
+                                                  TextElement.Foreground="{DynamicResource AccentBrush}"
+                                                  TextElement.FontSize="15"
+                                                  TextElement.FontWeight="SemiBold"/>
+                            </Grid>
+
+                            <ContentPresenter Grid.Column="1"
+                                              Margin="8,0,12,0"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+
+                            <Border x:Name="SwitchTrack"
+                                    Grid.Column="2"
+                                    Width="52"
+                                    Height="28"
+                                    CornerRadius="14"
+                                    Background="{DynamicResource FeatureSwitchBackgroundBrush}"
+                                    BorderBrush="{DynamicResource FeatureSwitchBorderBrush}"
+                                    BorderThickness="1"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                                <Grid>
+                                    <Ellipse x:Name="SwitchKnob"
+                                             Width="20"
+                                             Height="20"
+                                             Margin="4"
+                                             Fill="{DynamicResource FeatureSwitchKnobBrush}"
+                                             Stroke="{DynamicResource FeatureSwitchBorderBrush}"
+                                             StrokeThickness="1"
+                                             HorizontalAlignment="Left"
+                                             VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Card" Property="Background" Value="{DynamicResource FeatureCardHoverBrush}"/>
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource FeatureCardHoverBorderBrush}"/>
+                            <Setter TargetName="IconHalo" Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource FocusRingBrush}"/>
+                            <Setter TargetName="IconHalo" Property="Stroke" Value="{DynamicResource FocusRingBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Card" Property="Background" Value="{DynamicResource FeatureCardCheckedBrush}"/>
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="IconHalo" Property="Fill" Value="{DynamicResource FeatureIconCheckedBrush}"/>
+                            <Setter TargetName="IconHalo" Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="SwitchTrack" Property="Background" Value="{DynamicResource FeatureSwitchCheckedBrush}"/>
+                            <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            <Setter TargetName="SwitchKnob" Property="Fill" Value="{DynamicResource FeatureSwitchKnobCheckedBrush}"/>
+                            <Setter TargetName="SwitchKnob" Property="HorizontalAlignment" Value="Right"/>
+                            <Setter TargetName="StatusDot" Property="Fill" Value="{DynamicResource RamAccentBrush}"/>
+                            <Setter TargetName="StatusDot" Property="Opacity" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Card" Property="Opacity" Value="0.62"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SliderRepeatButtonStyle" TargetType="{x:Type RepeatButton}">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Height" Value="6"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RepeatButton}">
+                    <Border x:Name="TrackSegment"
+                            Height="{TemplateBinding Height}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="3"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="TrackSegment" Property="Background" Value="{DynamicResource SliderTrackHoverBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type Slider}">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Foreground" Value="{DynamicResource SliderFillBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SliderTrackBrush}"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Slider}">
+                    <Grid x:Name="Root" Height="{TemplateBinding Height}" SnapsToDevicePixels="True">
+                        <Track x:Name="PART_Track" VerticalAlignment="Center">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
+                                              Background="{DynamicResource SliderFillBrush}"
+                                              Style="{StaticResource SliderRepeatButtonStyle}"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb x:Name="Thumb" Width="18" Height="18">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="{x:Type Thumb}">
+                                            <Grid>
+                                                <Ellipse x:Name="ThumbHalo"
+                                                         Width="26"
+                                                         Height="26"
+                                                         Fill="{DynamicResource SliderFillBrush}"
+                                                         Opacity="0"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center"/>
+                                                <Ellipse x:Name="ThumbCore"
+                                                         Width="18"
+                                                         Height="18"
+                                                         Fill="{DynamicResource SliderThumbBrush}"
+                                                         Stroke="{DynamicResource SliderThumbBorderBrush}"
+                                                         StrokeThickness="2"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="ThumbHalo" Property="Opacity" Value="0.18"/>
+                                                    <Setter TargetName="ThumbCore" Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter TargetName="ThumbHalo" Property="Opacity" Value="0.28"/>
+                                                    <Setter TargetName="ThumbCore" Property="Fill" Value="#FFFFFF"/>
+                                                    <Setter TargetName="ThumbCore" Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
+                                              Background="{DynamicResource SliderTrackBrush}"
+                                              Style="{StaticResource SliderRepeatButtonStyle}"/>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PART_Track" Property="Opacity" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource FocusRingBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.48"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style TargetType="{x:Type ScrollBar}">
