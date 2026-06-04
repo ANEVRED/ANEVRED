@@ -810,8 +810,7 @@
                                                       IsChecked="{Binding IsEnabled, Mode=TwoWay}"
                                                       Tag="{Binding Definition.Icon}">
                                                 <StackPanel>
-                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"/>
-                                                    <TextBlock Text="ANEVRED MODULE" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Margin="0,3,0,0"/>
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13"/>
                                                 </StackPanel>
                                             </CheckBox>
                                         </DataTemplate>
@@ -1131,11 +1130,11 @@
                     <StackPanel>
                         <TextBlock Text="{Binding L[SystemActions]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
                         <UniformGrid Columns="2">
-                            <Button Content="{Binding L[OptimizeRamNow]}" Command="{Binding OptimizeMemoryCommand}" Margin="0,0,6,6"/>
-                            <Button Content="{Binding L[OptimizeCpuNow]}" Command="{Binding OptimizeCpuCommand}" Margin="0,0,0,6"/>
-                            <Button Content="{Binding L[OptimizeVramNow]}" Command="{Binding OptimizeVramCommand}" Margin="0,0,6,6"/>
-                            <Button Content="{Binding L[EnableGameMode]}" Command="{Binding EnableGameModeCommand}" Margin="0,0,0,6"/>
-                            <Button Content="{Binding L[StopUnnecessaryTasks]}" Command="{Binding StopUnnecessaryTasksCommand}" Margin="0,0,6,6"/>
+                            <Button Style="{StaticResource ActionTileButtonStyle}" Content="{Binding L[OptimizeRamNow]}" Command="{Binding OptimizeMemoryCommand}" Margin="0,0,6,6"/>
+                            <Button Style="{StaticResource ActionTileButtonStyle}" Content="{Binding L[OptimizeCpuNow]}" Command="{Binding OptimizeCpuCommand}" Margin="0,0,0,6"/>
+                            <Button Style="{StaticResource ActionTileButtonStyle}" Content="{Binding L[OptimizeVramNow]}" Command="{Binding OptimizeVramCommand}" Margin="0,0,6,6"/>
+                            <Button Style="{StaticResource ActionTileButtonStyle}" Content="{Binding L[EnableGameMode]}" Command="{Binding EnableGameModeCommand}" Margin="0,0,0,6"/>
+                            <Button Style="{StaticResource ActionTileButtonStyle}" Content="{Binding L[StopUnnecessaryTasks]}" Command="{Binding StopUnnecessaryTasksCommand}" Margin="0,0,6,6"/>
                         </UniformGrid>
                     </StackPanel>
                 </Border>

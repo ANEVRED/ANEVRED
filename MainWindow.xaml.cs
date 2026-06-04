@@ -224,15 +224,15 @@ public partial class MainWindow : Window
     {
         if (_viewModel.ThemeMode.Equals("Light", StringComparison.OrdinalIgnoreCase))
         {
-            SetBrush("WindowBackgroundBrush", "#F4F7FA");
-            SetBrush("SidebarBackgroundBrush", "#D0EAF0F6");
-            SetBrush("PanelBackgroundBrush", "#CFFFFFFF");
-            SetBrush("PanelAltBackgroundBrush", "#C8EAF0F6");
-            SetBrush("PanelHoverBrush", "#D8DCE7F3");
+            SetBrush("WindowBackgroundBrush", "#EAF2F8");
+            SetBrush("SidebarBackgroundBrush", "#DCE9F2FA");
+            SetBrush("PanelBackgroundBrush", "#DDF7FAFE");
+            SetBrush("PanelAltBackgroundBrush", "#D6E8F1FA");
+            SetBrush("PanelHoverBrush", "#DCE0F0FF");
             SetBrush("PrimaryTextBrush", "#10151D");
             SetBrush("SecondaryTextBrush", "#526173");
             SetBrush("DisabledTextBrush", "#7B8794");
-            SetBrush("BorderBrushSoft", "#CDD6E0");
+            SetBrush("BorderBrushSoft", "#AFC3D8");
             SetBrush("GraphFillBrush", "#B8F8FAFC");
             SetBrush("TableHeaderBrush", "#C8E2EAF4");
             SetBrush("DataGridBackgroundBrush", "#22FFFFFF");
@@ -246,12 +246,12 @@ public partial class MainWindow : Window
             SetBrush("CheckBoxBackgroundBrush", "#FFFFFFFF");
             SetBrush("CheckBoxCheckedBackgroundBrush", "#2563EB");
             SetBrush("CheckBoxCheckBrush", "#FFFFFFFF");
-            SetBrush("FeatureCardBackgroundBrush", "#F8FBFF");
-            SetBrush("FeatureCardHoverBrush", "#EEF6FF");
-            SetBrush("FeatureCardCheckedBrush", "#E8F2FF");
-            SetBrush("FeatureCardHoverBorderBrush", "#8CBDF7");
-            SetBrush("FeatureIconBackgroundBrush", "#EAF4FF");
-            SetBrush("FeatureIconInnerBrush", "#FFFFFF");
+            SetBrush("FeatureCardBackgroundBrush", "#DDEAF4FF");
+            SetBrush("FeatureCardHoverBrush", "#E6F2FF");
+            SetBrush("FeatureCardCheckedBrush", "#D8EAFE");
+            SetBrush("FeatureCardHoverBorderBrush", "#5FA8F8");
+            SetBrush("FeatureIconBackgroundBrush", "#DCEBFA");
+            SetBrush("FeatureIconInnerBrush", "#F7FBFF");
             SetBrush("FeatureIconBorderBrush", "#9CB8D8");
             SetBrush("FeatureIconCheckedBrush", "#DBEAFF");
             SetBrush("FeatureSwitchBackgroundBrush", "#D8E2EE");
@@ -271,13 +271,13 @@ public partial class MainWindow : Window
             SetBrush("VramAccentBrush", "#3B82F6");
             SetBrush("FrametimeAccentBrush", "#F97316");
             SetBrush("CriticalBrush", "#EF4444");
-            SetResource("WorkspaceLogoOpacity", 0.075);
+            SetResource("WorkspaceLogoOpacity", 0.055);
             SetResource("LogoContrastEffect", new DropShadowEffect
             {
-                Color = Colors.Black,
-                BlurRadius = 24,
+                Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#2563EB"),
+                BlurRadius = 18,
                 ShadowDepth = 0,
-                Opacity = 0.30
+                Opacity = 0.16
             });
         }
         else
@@ -329,7 +329,7 @@ public partial class MainWindow : Window
             SetBrush("VramAccentBrush", "#3B82F6");
             SetBrush("FrametimeAccentBrush", "#F97316");
             SetBrush("CriticalBrush", "#EF4444");
-            SetResource("WorkspaceLogoOpacity", 0.055);
+            SetResource("WorkspaceLogoOpacity", 0.070);
             SetResource("LogoContrastEffect", new DropShadowEffect
             {
                 Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#60A5FA"),

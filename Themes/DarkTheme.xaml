@@ -101,6 +101,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="7"
                             SnapsToDevicePixels="True">
                         <ContentPresenter Margin="{TemplateBinding Padding}"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -160,6 +161,15 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="MinHeight" Value="38"/>
+    </Style>
+
+    <Style x:Key="ActionTileButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="Background" Value="{DynamicResource FeatureCardBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
 
     <Style x:Key="SidebarButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
@@ -468,8 +478,8 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Margin" Value="0,0,8,8"/>
-        <Setter Property="MinWidth" Value="210"/>
-        <Setter Property="MinHeight" Value="76"/>
+        <Setter Property="MinWidth" Value="198"/>
+        <Setter Property="MinHeight" Value="56"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type CheckBox}">
@@ -478,13 +488,13 @@
                             BorderBrush="{DynamicResource BorderBrushSoft}"
                             BorderThickness="1"
                             CornerRadius="8"
-                            Padding="12"
+                            Padding="10"
                             SnapsToDevicePixels="True">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="44"/>
+                                <ColumnDefinition Width="36"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="58"/>
+                                <ColumnDefinition Width="48"/>
                             </Grid.ColumnDefinitions>
 
                             <Ellipse x:Name="StatusDot"
@@ -496,28 +506,28 @@
                                      HorizontalAlignment="Right"
                                      VerticalAlignment="Top"/>
 
-                            <Grid Width="38" Height="38" VerticalAlignment="Center">
+                            <Grid Width="30" Height="30" VerticalAlignment="Center">
                                 <Ellipse x:Name="IconHalo" Fill="{DynamicResource FeatureIconBackgroundBrush}" Stroke="{DynamicResource FeatureIconBorderBrush}" StrokeThickness="1"/>
-                                <Ellipse Width="25" Height="25" Fill="{DynamicResource FeatureIconInnerBrush}" Stroke="{DynamicResource FeatureIconBorderBrush}" StrokeThickness="1"/>
+                                <Ellipse Width="20" Height="20" Fill="{DynamicResource FeatureIconInnerBrush}" Stroke="{DynamicResource FeatureIconBorderBrush}" StrokeThickness="1"/>
                                 <ContentPresenter HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   Content="{TemplateBinding Tag}"
                                                   TextElement.Foreground="{DynamicResource AccentBrush}"
-                                                  TextElement.FontSize="15"
+                                                  TextElement.FontSize="13"
                                                   TextElement.FontWeight="SemiBold"/>
                             </Grid>
 
                             <ContentPresenter Grid.Column="1"
-                                              Margin="8,0,12,0"
+                                              Margin="8,0,8,0"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="Center"
                                               RecognizesAccessKey="True"/>
 
                             <Border x:Name="SwitchTrack"
                                     Grid.Column="2"
-                                    Width="52"
-                                    Height="28"
-                                    CornerRadius="14"
+                                    Width="42"
+                                    Height="22"
+                                    CornerRadius="11"
                                     Background="{DynamicResource FeatureSwitchBackgroundBrush}"
                                     BorderBrush="{DynamicResource FeatureSwitchBorderBrush}"
                                     BorderThickness="1"
@@ -525,9 +535,9 @@
                                     VerticalAlignment="Center">
                                 <Grid>
                                     <Ellipse x:Name="SwitchKnob"
-                                             Width="20"
-                                             Height="20"
-                                             Margin="4"
+                                             Width="16"
+                                             Height="16"
+                                             Margin="3"
                                              Fill="{DynamicResource FeatureSwitchKnobBrush}"
                                              Stroke="{DynamicResource FeatureSwitchBorderBrush}"
                                              StrokeThickness="1"
