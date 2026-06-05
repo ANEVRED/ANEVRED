@@ -43,31 +43,7 @@ public sealed class SettingsService
                 return AppSettings.CreateDefault(DetectLanguage());
             }
 
-            settings.ProcessRefreshSeconds = settings.ProcessRefreshSeconds;
-            settings.MaxDisplayedProcesses = settings.MaxDisplayedProcesses;
-            settings.AutoRamIntervalMinutes = settings.AutoRamIntervalMinutes;
-            settings.AutoCpuIntervalMinutes = settings.AutoCpuIntervalMinutes;
-            settings.StarCitizenServerChangeHotkey = settings.StarCitizenServerChangeHotkey;
-            settings.StarCitizenRespawnHotkey = settings.StarCitizenRespawnHotkey;
-            settings.StarCitizenStutterHotkey = settings.StarCitizenStutterHotkey;
-            settings.UiDimmingAutoTuneEnabled = settings.UiDimmingAutoTuneEnabled;
-            settings.UiDimmingHotkey = settings.UiDimmingHotkey;
-            settings.UiDimmingOpacityPercent = settings.UiDimmingOpacityPercent;
-            settings.UiDimmingRed = settings.UiDimmingRed;
-            settings.UiDimmingGreen = settings.UiDimmingGreen;
-            settings.UiDimmingBlue = settings.UiDimmingBlue;
-            settings.UiColorFilterEnabled = settings.UiColorFilterEnabled;
-            settings.UiColorFilterRedPercent = settings.UiColorFilterRedPercent;
-            settings.UiColorFilterGreenPercent = settings.UiColorFilterGreenPercent;
-            settings.UiColorFilterBluePercent = settings.UiColorFilterBluePercent;
-            settings.UiColorFilterContrastPercent = settings.UiColorFilterContrastPercent;
-            settings.UiColorFilterBrightnessPercent = settings.UiColorFilterBrightnessPercent;
-            settings.UiColorFilterGammaPercent = settings.UiColorFilterGammaPercent;
-            settings.UiColorFilterTemperature = settings.UiColorFilterTemperature;
-            settings.UiColorFilterTint = settings.UiColorFilterTint;
-            settings.MainWindowState = settings.MainWindowState;
-            settings.MainWindowWidth = settings.MainWindowWidth;
-            settings.MainWindowHeight = settings.MainWindowHeight;
+            settings.ValidateAndClamp();
             EnsureProtectionDefaults(settings);
             return settings;
         }

@@ -121,20 +121,28 @@ For bright scenes, night play, and improved visibility.
 
 ANEVRED uses conservative local actions:
 
+- no kernel drivers
+- no anti-cheat bypass
+- no game memory reading or editing
+- no shader injection
 - protected processes are not terminated or modified
 - system, security, launcher, and anti-cheat processes are excluded from unsafe actions
+- GPU driver, audio, and input-device helper processes are protected by default
+- "Stop Unnecessary Tasks" asks for confirmation and only requests normal window close; it does not force-kill apps
 - process priorities changed by ANEVRED are restored on app exit
 - recommendations can be ignored
 - local learning can be disabled
 - privacy mode keeps learned data on the local machine
 - screen translation uses normal desktop capture and OCR, not game injection
 
+Experimental areas are labeled in the app. VRAM relief, memory compression controls, and background app close requests should be treated as opt-in troubleshooting tools, not automatic cleanup magic.
+
 ## Build
 
 Requirements:
 
 - Windows
-- .NET 10 SDK with Windows desktop support
+- .NET 10 SDK with Windows desktop support. .NET 10 is the intended target for this project.
 
 ## Support
 

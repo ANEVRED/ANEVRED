@@ -414,6 +414,16 @@ public sealed class AppSettings : INotifyPropertyChanged
         settings.ProtectionRules.Add(new ProtectionRule("Tobii*", true, "Tobii Game Hub / Eye Tracker"));
         settings.ProtectionRules.Add(new ProtectionRule("EasyAntiCheat*", true, "Anti-Cheat"));
         settings.ProtectionRules.Add(new ProtectionRule("BattlEye*", true, "Anti-Cheat"));
+        settings.ProtectionRules.Add(new ProtectionRule("nvcontainer*", true, "NVIDIA driver/service"));
+        settings.ProtectionRules.Add(new ProtectionRule("NVIDIA Share*", true, "NVIDIA overlay"));
+        settings.ProtectionRules.Add(new ProtectionRule("RadeonSoftware*", true, "AMD driver/software"));
+        settings.ProtectionRules.Add(new ProtectionRule("atieclxx*", true, "AMD driver/service"));
+        settings.ProtectionRules.Add(new ProtectionRule("igfx*", true, "Intel graphics"));
+        settings.ProtectionRules.Add(new ProtectionRule("audiodg*", true, "Windows audio"));
+        settings.ProtectionRules.Add(new ProtectionRule("Nahimic*", true, "Audio service"));
+        settings.ProtectionRules.Add(new ProtectionRule("lghub*", true, "Input device software"));
+        settings.ProtectionRules.Add(new ProtectionRule("iCUE*", true, "Input device software"));
+        settings.ProtectionRules.Add(new ProtectionRule("SteelSeries*", true, "Input device software"));
         return settings;
     }
 
@@ -481,6 +491,44 @@ public sealed class AppSettings : INotifyPropertyChanged
                 FeatureLogsEnabled = value;
                 break;
         }
+    }
+
+    public void ValidateAndClamp()
+    {
+        RamThresholdPercent = RamThresholdPercent;
+        CpuThresholdPercent = CpuThresholdPercent;
+        Language = Language;
+        Theme = Theme;
+        ProcessRefreshSeconds = ProcessRefreshSeconds;
+        MaxDisplayedProcesses = MaxDisplayedProcesses;
+        AutoRamIntervalMinutes = AutoRamIntervalMinutes;
+        AutoCpuIntervalMinutes = AutoCpuIntervalMinutes;
+        StarCitizenServerChangeHotkey = StarCitizenServerChangeHotkey;
+        StarCitizenRespawnHotkey = StarCitizenRespawnHotkey;
+        StarCitizenStutterHotkey = StarCitizenStutterHotkey;
+        ScreenTranslationHotkey = ScreenTranslationHotkey;
+        ScreenTranslationCaptureHotkey = ScreenTranslationCaptureHotkey;
+        ScreenTranslationRegionHotkey = ScreenTranslationRegionHotkey;
+        ScreenTranslationLeft = ScreenTranslationLeft;
+        ScreenTranslationTop = ScreenTranslationTop;
+        ScreenTranslationWidth = ScreenTranslationWidth;
+        ScreenTranslationHeight = ScreenTranslationHeight;
+        UiDimmingHotkey = UiDimmingHotkey;
+        UiDimmingOpacityPercent = UiDimmingOpacityPercent;
+        UiDimmingRed = UiDimmingRed;
+        UiDimmingGreen = UiDimmingGreen;
+        UiDimmingBlue = UiDimmingBlue;
+        UiColorFilterRedPercent = UiColorFilterRedPercent;
+        UiColorFilterGreenPercent = UiColorFilterGreenPercent;
+        UiColorFilterBluePercent = UiColorFilterBluePercent;
+        UiColorFilterContrastPercent = UiColorFilterContrastPercent;
+        UiColorFilterBrightnessPercent = UiColorFilterBrightnessPercent;
+        UiColorFilterGammaPercent = UiColorFilterGammaPercent;
+        UiColorFilterTemperature = UiColorFilterTemperature;
+        UiColorFilterTint = UiColorFilterTint;
+        MainWindowState = MainWindowState;
+        MainWindowWidth = MainWindowWidth;
+        MainWindowHeight = MainWindowHeight;
     }
 
 }

@@ -19,7 +19,6 @@ public sealed class OptimizationService
         "phoneexperiencehost",
         "teams",
         "msteams",
-        "onedrive",
         "gamebar",
         "gamebarftserver",
         "xbox",
@@ -299,17 +298,22 @@ public sealed class OptimizationService
             protectedSkipped));
     }
 
-    public void RunGamingKillSwitch(IReadOnlyList<ProcessSnapshot> processes)
+    public IReadOnlyList<ProcessSnapshot> GetGamingKillSwitchCandidates(IReadOnlyList<ProcessSnapshot> processes)
     {
-        var eligible = processes
+        return processes
             .Where(IsKillSwitchCandidate)
             .OrderByDescending(process => process.CommitMb)
             .ThenByDescending(process => process.MemoryMb)
             .Take(24)
             .ToList();
+    }
+
+    public void RunGamingKillSwitch(IReadOnlyList<ProcessSnapshot> processes)
+    {
+        var eligible = GetGamingKillSwitchCandidates(processes);
 
         var closeRequested = 0;
-        var killed = 0;
+        var noWindowSkipped = 0;
         var denied = 0;
         var names = new List<string>();
 
@@ -320,14 +324,19 @@ public sealed class OptimizationService
                 using var process = Process.GetProcessById(candidate.Id);
                 names.Add(candidate.Name);
 
-                if (process.MainWindowHandle != IntPtr.Zero && process.CloseMainWindow())
+                if (process.MainWindowHandle == IntPtr.Zero)
+                {
+                    noWindowSkipped++;
+                    continue;
+                }
+
+                if (process.CloseMainWindow())
                 {
                     closeRequested++;
                     continue;
                 }
 
-                process.Kill(entireProcessTree: true);
-                killed++;
+                denied++;
             }
             catch (Win32Exception)
             {
@@ -348,7 +357,7 @@ public sealed class OptimizationService
             processes.Count,
             eligible.Count,
             closeRequested,
-            killed,
+            noWindowSkipped,
             denied,
             names.Count == 0 ? "-" : string.Join(", ", names.Distinct().Take(8))));
     }

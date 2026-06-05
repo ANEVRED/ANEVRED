@@ -1284,6 +1284,29 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         if (_lastSnapshot is not null)
         {
+            var candidates = _optimizationService.GetGamingKillSwitchCandidates(_lastSnapshot.Processes);
+            if (candidates.Count > 0)
+            {
+                var processList = string.Join(
+                    Environment.NewLine,
+                    candidates
+                        .Take(12)
+                        .Select(process => $"{process.Name} (PID {process.Id}, RAM {process.MemoryMb:0} MB, Commit {process.CommitMb:0} MB)"));
+
+                if (candidates.Count > 12)
+                {
+                    processList += Environment.NewLine + $"... +{candidates.Count - 12}";
+                }
+
+                if (ConfirmationRequested?.Invoke(
+                        L["StopTasksConfirmTitle"],
+                        L.Format("StopTasksConfirmText", processList)) != true)
+                {
+                    AddLog("Info", L["StopTasksCanceled"]);
+                    return;
+                }
+            }
+
             _optimizationService.RunGamingKillSwitch(_lastSnapshot.Processes);
         }
 

@@ -12,7 +12,11 @@ public sealed class ProcessProtectionService
         "SecurityHealthService", "SecurityHealthSystray", "MsMpEng", "NisSrv", "Sense",
         "MpDefenderCoreService", "wsc_proxy", "SgrmBroker", "audiodg",
         "EasyAntiCheat", "EasyAntiCheat_EOS", "BEService", "BEService_x64", "BEDaisy",
-        "vgc", "vgk", "RiotClientServices"
+        "vgc", "vgk", "RiotClientServices",
+        "nvcontainer", "nvidia share", "nvsphelper64", "nvdisplay.container",
+        "radeonsoftware", "amdow", "atieclxx", "atiesrxx",
+        "igfx", "igfxem", "igfxtray", "intelgraphics",
+        "nahimic", "nahimicservice", "lghub", "lghub_agent", "icue", "steelseries", "sonar"
     };
 
     private readonly AppSettings _settings;
