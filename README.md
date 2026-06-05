@@ -10,6 +10,24 @@ ANEVRED is a local-first desktop application focused on performance monitoring, 
 
 > Monitor your system, optimize background activity, track Star Citizen sessions, and translate on-screen text without game modifications.
 
+## Screenshots
+
+### Dashboard
+
+![ANEVRED Dashboard](docs/images/dashboard.png)
+
+### Star Citizen Hub
+
+![ANEVRED Star Citizen Hub](docs/images/starcitizenhub.png)
+
+### Hardware Monitor
+
+![ANEVRED Hardware Monitor](docs/images/hardwaremonitor.png)
+
+### Settings & Translation
+
+![ANEVRED Settings and Translation](docs/images/settings.png)
+
 ## What You See In The Application
 
 - Real-time CPU, RAM, GPU and VRAM monitoring
@@ -19,8 +37,6 @@ ANEVRED is a local-first desktop application focused on performance monitoring, 
 - OCR translation overlay using Windows OCR and Chrome Translator API
 - Hardware monitoring and sensor dashboards
 - UI dimming and visual comfort tools
-
-> Tip: Add dashboard, Star Citizen Hub, Hardware Monitor and Settings screenshots directly below this section. They will explain ANEVRED faster than any paragraph.
 
 <p align="center">
   <a href="https://buymeacoffee.com/anevred"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-yellow?style=for-the-badge" alt="Buy Me a Coffee"></a>
