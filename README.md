@@ -136,6 +136,14 @@ Requirements:
 - Windows
 - .NET 10 SDK with Windows desktop support
 
+## Support
+
+If ANEVRED helps you enjoy your gaming sessions, support helps fund testing, development and future releases.
+
+- Buy Me a Coffee: https://buymeacoffee.com/anevred
+- PayPal: https://paypal.me/Anevred
+- Star Citizen referral: https://www.robertsspaceindustries.com/enlist?referral=STAR-4WLN-4RNF
+
 ## Documentation
 
 - [Product Description](docs/PRODUCT.md)
