@@ -4,11 +4,23 @@
 
 # ANEVRED
 
-**Adaptive Neural Enhanced Visual Recognition Engine Daemon**
+**Windows Gaming Optimization, Hardware Monitoring and Star Citizen Assistant**
 
-ANEVRED started as a personal toolset for Star Citizen. The original goal was simple: gain more control over system resources, background processes, memory pressure, and performance on a mid-range gaming system.
+ANEVRED is a local-first desktop application focused on performance monitoring, safe optimization, hardware visibility, Star Citizen session tracking, and real-time OCR translation overlays.
 
-Over time, the project evolved into a local-first collection of utilities focused on monitoring, safe optimization, and quality-of-life improvements, including Star Citizen session tools, UI dimming, and a real-time OCR translation overlay.
+> Monitor your system, optimize background activity, track Star Citizen sessions, and translate on-screen text without game modifications.
+
+## What You See In The Application
+
+- Real-time CPU, RAM, GPU and VRAM monitoring
+- AI-style recommendation engine
+- Safe process protection and optimization tools
+- Star Citizen session analytics and event tracking
+- OCR translation overlay using Windows OCR and Chrome Translator API
+- Hardware monitoring and sensor dashboards
+- UI dimming and visual comfort tools
+
+> Tip: Add dashboard, Star Citizen Hub, Hardware Monitor and Settings screenshots directly below this section. They will explain ANEVRED faster than any paragraph.
 
 <p align="center">
   <a href="https://buymeacoffee.com/anevred"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-yellow?style=for-the-badge" alt="Buy Me a Coffee"></a>
@@ -108,36 +120,9 @@ Requirements:
 - Windows
 - .NET 10 SDK with Windows desktop support
 
-Build:
-
-```powershell
-dotnet build ANEVRED.csproj -c Release
-```
-
-If the normal `obj` folder is locked on your machine, use custom build folders:
-
-```powershell
-New-Item -ItemType Directory -Force -Path buildtmp, buildobj-local, buildbin-local | Out-Null
-$env:TEMP=(Resolve-Path buildtmp).Path
-$env:TMP=$env:TEMP
-dotnet build ANEVRED.csproj -c Release -p:BaseIntermediateOutputPath=buildobj-local\ -p:BaseOutputPath=buildbin-local\
-```
-
-## Support
-
-If ANEVRED helps you enjoy your gaming sessions, support helps fund new features, testing, and future releases.
-
-- Buy Me a Coffee: https://buymeacoffee.com/anevred
-- PayPal: https://paypal.me/Anevred
-- Star Citizen referral: https://www.robertsspaceindustries.com/enlist?referral=STAR-4WLN-4RNF
-
 ## Documentation
 
 - [Product Description](docs/PRODUCT.md)
 - [Feature Overview](docs/FEATURES.md)
 - [Release Text](docs/RELEASE_NOTES.md)
 - [Support ANEVRED](docs/SUPPORT.md)
-
-## Status
-
-ANEVRED is an active desktop project. Some features, especially live translation, local recommendation tuning, UI dimming, and Star Citizen-specific helpers, are experimental and depend on Windows APIs, Chrome capabilities, and the current Star Citizen client behavior.
