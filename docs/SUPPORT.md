@@ -2,7 +2,7 @@
 
 ANEVRED is developed in spare time and released as a free Windows utility for gamers.
 
-If ANEVRED helps you avoid alt-tabbing, translate Star Citizen missions, improve visibility in bright scenes, or monitor your system more comfortably, consider supporting future development.
+If ANEVRED helps you avoid alt-tabbing, improve visibility in bright scenes, track Star Citizen sessions, or monitor your system more comfortably, consider supporting future development.
 
 ## Support links
 
@@ -12,10 +12,9 @@ If ANEVRED helps you avoid alt-tabbing, translate Star Citizen missions, improve
 
 ## What support helps with
 
-- OCR and live translation improvements
-- Better overlay layout handling
 - Star Citizen-specific quality-of-life features
 - UI dimming / night vision tuning
+- Monitoring and safety improvements
 - Testing new Windows and game configurations
 - Packaging, releases, and documentation
 

@@ -6,9 +6,9 @@
 
 **Windows Gaming Optimization, Hardware Monitoring and Star Citizen Assistant**
 
-ANEVRED is a local-first desktop application focused on performance monitoring, safe optimization, hardware visibility, Star Citizen session tracking, and real-time OCR translation overlays.
+ANEVRED is a local-first desktop application focused on performance monitoring, safe optimization, hardware visibility, Star Citizen session tracking, and visual comfort tools.
 
-> Monitor your system, optimize background activity, track Star Citizen sessions, and translate on-screen text without game modifications.
+> Monitor your system, optimize background activity, track Star Citizen sessions, and improve visibility without game modifications.
 
 ## Screenshots
 
@@ -24,9 +24,9 @@ ANEVRED is a local-first desktop application focused on performance monitoring, 
 
 ![ANEVRED Hardware Monitor](docs/images/hardwaremonitor.png)
 
-### Settings & Translation
+### Settings
 
-![ANEVRED Settings and Translation](docs/images/settings.png)
+![ANEVRED Settings](docs/images/settings.png)
 
 ## What You See In The Application
 
@@ -34,7 +34,6 @@ ANEVRED is a local-first desktop application focused on performance monitoring, 
 - AI-style recommendation engine
 - Safe process protection and optimization tools
 - Star Citizen session analytics and event tracking
-- OCR translation overlay using Windows OCR and Chrome Translator API
 - Hardware monitoring and sensor dashboards
 - UI dimming and visual comfort tools
 
@@ -57,7 +56,7 @@ With a moderate CPU and 32 GB of RAM, I wanted a way to:
 - keep control over what is running on my system
 - react quickly when Star Citizen starts to stutter or behave strangely
 
-ANEVRED was built to solve those problems first. The live translation overlay came later and became one of the most visible features, but optimization, monitoring, and control were the original reason for the project.
+ANEVRED was built to solve those problems first. This no-overlay build keeps the focus on optimization, monitoring, control, Star Citizen session tracking, and visual comfort.
 
 ## Main Features
 
@@ -92,21 +91,6 @@ ANEVRED was built to solve those problems first. The live translation overlay ca
 - hotkey support for quick event logging
 - security-process hints during active sessions
 
-### Live Translation Overlay
-
-Originally added as an experimental feature after the optimization tools.
-
-- selectable screen region
-- Windows OCR based text detection
-- real-time translation when Chrome's Translator API is available
-- external overlay rendering
-- layout-aware translated text blocks
-- no game file modification
-- no injection
-- no custom language packs required
-
-The translation overlay works not only in Star Citizen, but in virtually any application where Windows OCR can read the selected region.
-
 ### UI Dimming
 
 For bright scenes, night play, and improved visibility.
@@ -133,7 +117,7 @@ ANEVRED uses conservative local actions:
 - recommendations can be ignored
 - local learning can be disabled
 - privacy mode keeps learned data on the local machine
-- screen translation uses normal desktop capture and OCR, not game injection
+- this no-overlay build does not include screen capture, text recognition, or translation overlay components
 
 Experimental areas are labeled in the app. VRAM relief, memory compression controls, and background app close requests should be treated as opt-in troubleshooting tools, not automatic cleanup magic.
 

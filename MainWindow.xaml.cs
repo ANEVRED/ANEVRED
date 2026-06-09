@@ -24,9 +24,6 @@ public partial class MainWindow : Window
     private const int HotkeyServerChange = 101;
     private const int HotkeyRespawn = 102;
     private const int HotkeyStutter = 103;
-    private const int HotkeyScreenTranslation = 104;
-    private const int HotkeyScreenTranslationCapture = 105;
-    private const int HotkeyScreenTranslationRegion = 106;
     private const int HotkeyUiDimming = 107;
     private const uint ModAlt = 0x0001;
     private const uint ModControl = 0x0002;
@@ -36,9 +33,7 @@ public partial class MainWindow : Window
     private const int VkShift = 0x10;
 
     private readonly MainViewModel _viewModel;
-    private readonly Services.ScreenTranslationService _screenTranslationService;
     private readonly DisplayColorFilterService _displayColorFilterService = new();
-    private readonly System.Windows.Threading.DispatcherTimer _screenTranslationTimer = new();
     private readonly System.Windows.Threading.DispatcherTimer _uiDimmingAutoTimer = new();
     private readonly LowLevelKeyboardProc _keyboardProc;
     private Forms.NotifyIcon? _notifyIcon;
@@ -46,15 +41,9 @@ public partial class MainWindow : Window
     private HwndSource? _source;
     private IntPtr _windowHandle;
     private string? _pendingHotkeyTarget;
-    private TranslationOverlayWindow? _translationOverlay;
-    private CancellationTokenSource? _screenTranslationCancellation;
-    private bool _isScreenTranslationRunning;
-    private int _screenTranslationRunId;
     private readonly HashSet<int> _registeredHotkeyIds = [];
     private readonly Dictionary<int, DateTime> _lastHotkeyDispatch = [];
     private IntPtr _keyboardHook;
-    private DateTime _lastTranslationToggle = DateTime.MinValue;
-    private DateTime _lastTranslationCapture = DateTime.MinValue;
     private WindowState _lastNonMinimizedWindowState = WindowState.Maximized;
     private UiDimmingOverlayWindow? _uiDimmingOverlay;
     private bool _isUiDimmingAutoTuning;
@@ -65,9 +54,6 @@ public partial class MainWindow : Window
         InitializeComponent();
         _keyboardProc = KeyboardHookCallback;
         _viewModel = new MainViewModel();
-        _screenTranslationService = new Services.ScreenTranslationService(
-            message => _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: " + message),
-            () => Dispatcher.BeginInvoke(new Action(ShowScreenTranslationBusy)));
         DataContext = _viewModel;
         _viewModel.ThemeChanged += (_, _) => ApplyTheme();
         _viewModel.NotificationRequested += ShowNotification;
@@ -101,8 +87,6 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => RememberMainWindowPlacement();
         LocationChanged += (_, _) => RememberMainWindowPlacement();
         SizeChanged += (_, _) => RememberMainWindowPlacement();
-        _screenTranslationTimer.Interval = TimeSpan.FromSeconds(30);
-        _screenTranslationTimer.Tick += async (_, _) => await UpdateScreenTranslationAsync();
         _uiDimmingAutoTimer.Interval = TimeSpan.FromSeconds(8);
         _uiDimmingAutoTimer.Tick += (_, _) => AutoTuneUiDimming(measureOriginal: false);
     }
@@ -121,10 +105,7 @@ public partial class MainWindow : Window
         UnregisterGlobalHotkeys();
         UninstallKeyboardHook();
         _source?.RemoveHook(WndProc);
-        _screenTranslationTimer.Stop();
-        _screenTranslationService.Dispose();
         _displayColorFilterService.Dispose();
-        _translationOverlay?.Close();
         _uiDimmingOverlay?.Close();
         _notifyIcon?.Dispose();
         _trayMenu?.Dispose();
@@ -446,9 +427,6 @@ public partial class MainWindow : Window
         _registeredHotkeyIds.Clear();
         var registered = new List<string>();
         var failed = new List<string>();
-        RegisterConfiguredHotkey(HotkeyScreenTranslation, _viewModel.Settings.ScreenTranslationHotkey, registered, failed);
-        RegisterConfiguredHotkey(HotkeyScreenTranslationCapture, _viewModel.Settings.ScreenTranslationCaptureHotkey, registered, failed);
-        RegisterConfiguredHotkey(HotkeyScreenTranslationRegion, _viewModel.Settings.ScreenTranslationRegionHotkey, registered, failed);
         RegisterConfiguredHotkey(HotkeyUiDimming, _viewModel.Settings.UiDimmingHotkey, registered, failed);
 
         if (!_viewModel.Settings.StarCitizenHotkeysEnabled)
@@ -473,9 +451,6 @@ public partial class MainWindow : Window
         UnregisterHotKey(_windowHandle, HotkeyServerChange);
         UnregisterHotKey(_windowHandle, HotkeyRespawn);
         UnregisterHotKey(_windowHandle, HotkeyStutter);
-        UnregisterHotKey(_windowHandle, HotkeyScreenTranslation);
-        UnregisterHotKey(_windowHandle, HotkeyScreenTranslationCapture);
-        UnregisterHotKey(_windowHandle, HotkeyScreenTranslationRegion);
         UnregisterHotKey(_windowHandle, HotkeyUiDimming);
     }
 
@@ -512,15 +487,6 @@ public partial class MainWindow : Window
                 break;
             case HotkeyStutter:
                 _viewModel.MarkStutterCommand.Execute(null);
-                break;
-            case HotkeyScreenTranslation:
-                TryToggleScreenTranslation();
-                break;
-            case HotkeyScreenTranslationCapture:
-                TryCaptureScreenTranslation();
-                break;
-            case HotkeyScreenTranslationRegion:
-                TryChooseTranslationRegion();
                 break;
             case HotkeyUiDimming:
                 ToggleUiDimming();
@@ -624,36 +590,9 @@ public partial class MainWindow : Window
             or nameof(AppSettings.StarCitizenServerChangeHotkey)
             or nameof(AppSettings.StarCitizenRespawnHotkey)
             or nameof(AppSettings.StarCitizenStutterHotkey)
-            or nameof(AppSettings.ScreenTranslationHotkey)
-            or nameof(AppSettings.ScreenTranslationCaptureHotkey)
-            or nameof(AppSettings.ScreenTranslationRegionHotkey)
             or nameof(AppSettings.UiDimmingHotkey))
         {
             RegisterGlobalHotkeys();
-        }
-
-        if (e.PropertyName is nameof(AppSettings.ScreenTranslationEnabled))
-        {
-            if (_viewModel.Settings.ScreenTranslationEnabled)
-            {
-                StartScreenTranslation();
-            }
-            else
-            {
-                StopScreenTranslation();
-            }
-        }
-
-        if (e.PropertyName == nameof(AppSettings.ScreenTranslationAutoRefresh))
-        {
-            if (_viewModel.Settings.ScreenTranslationEnabled && _viewModel.Settings.ScreenTranslationAutoRefresh)
-            {
-                _screenTranslationTimer.Start();
-            }
-            else
-            {
-                _screenTranslationTimer.Stop();
-            }
         }
 
         if (e.PropertyName is nameof(AppSettings.UiDimmingEnabled)
@@ -1104,15 +1043,6 @@ public partial class MainWindow : Window
             case "Stutter":
                 _viewModel.Settings.StarCitizenStutterHotkey = hotkey;
                 break;
-            case "Translation":
-                _viewModel.Settings.ScreenTranslationHotkey = hotkey;
-                break;
-            case "TranslationCapture":
-                _viewModel.Settings.ScreenTranslationCaptureHotkey = hotkey;
-                break;
-            case "TranslationRegion":
-                _viewModel.Settings.ScreenTranslationRegionHotkey = hotkey;
-                break;
             case "UiDimming":
                 _viewModel.Settings.UiDimmingHotkey = hotkey;
                 break;
@@ -1134,381 +1064,6 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() == Forms.DialogResult.OK)
         {
             _viewModel.SetStarCitizenPath(dialog.SelectedPath);
-        }
-    }
-
-    private void ToggleScreenTranslation()
-    {
-        _viewModel.Settings.ScreenTranslationEnabled = !_viewModel.Settings.ScreenTranslationEnabled;
-    }
-
-    private void TryToggleScreenTranslation()
-    {
-        if ((DateTime.UtcNow - _lastTranslationToggle) < TimeSpan.FromMilliseconds(500))
-        {
-            _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: toggle ignored by debounce.");
-            return;
-        }
-
-        _lastTranslationToggle = DateTime.UtcNow;
-        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: toggle requested.");
-        ToggleScreenTranslation();
-    }
-
-    private void TryCaptureScreenTranslation()
-    {
-        if ((DateTime.UtcNow - _lastTranslationCapture) < TimeSpan.FromMilliseconds(500))
-        {
-            _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: capture ignored by debounce.");
-            return;
-        }
-
-        if (_isScreenTranslationRunning)
-        {
-            _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: capture ignored because translation is still running.");
-            return;
-        }
-
-        _lastTranslationCapture = DateTime.UtcNow;
-        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: capture requested.");
-        if (!_viewModel.Settings.ScreenTranslationEnabled)
-        {
-            _viewModel.Settings.ScreenTranslationEnabled = true;
-        }
-
-        _ = UpdateScreenTranslationAsync();
-    }
-
-    private void ShowScreenTranslationBusy()
-    {
-        if (_translationOverlay is null || !_viewModel.Settings.ScreenTranslationEnabled)
-        {
-            return;
-        }
-
-        _translationOverlay.SetCaptureMode(false);
-        _translationOverlay.SetText("Übersetzung läuft...", string.Empty);
-        if (!_translationOverlay.IsVisible)
-        {
-            _translationOverlay.Show();
-        }
-
-        _translationOverlay.Topmost = true;
-        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: OCR done, waiting for Chrome translator.");
-    }
-
-    private void TryChooseTranslationRegion()
-    {
-        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: region selection requested.");
-        ChooseTranslationRegion(restoreMainWindow: false);
-    }
-
-    private void StartScreenTranslation()
-    {
-        _screenTranslationCancellation?.Cancel();
-        _screenTranslationCancellation?.Dispose();
-        _screenTranslationCancellation = new CancellationTokenSource();
-        var runId = ++_screenTranslationRunId;
-        _translationOverlay ??= new TranslationOverlayWindow();
-        _translationOverlay.SetRegion(CurrentTranslationRegion());
-        _translationOverlay.SetText(string.Empty, "Live-Übersetzung aktiv.");
-        _translationOverlay.Show();
-        _translationOverlay.Topmost = true;
-        if (_viewModel.Settings.ScreenTranslationAutoRefresh)
-        {
-            _screenTranslationTimer.Start();
-        }
-        _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: overlay start visible={_translationOverlay.IsVisible}, enabled={_viewModel.Settings.ScreenTranslationEnabled}, region={CurrentTranslationRegion()}.");
-        _ = WarmUpThenUpdateScreenTranslationAsync(runId, _screenTranslationCancellation.Token);
-    }
-
-    private async Task WarmUpThenUpdateScreenTranslationAsync(int runId, CancellationToken cancellationToken)
-    {
-        if (_viewModel.Settings.ScreenTranslationAutoRefresh && IsCurrentScreenTranslationRun(runId, cancellationToken))
-        {
-            await UpdateScreenTranslationAsync(cancellationToken, runId);
-        }
-    }
-
-    private void StopScreenTranslation()
-    {
-        _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: overlay stop visible={_translationOverlay?.IsVisible}, enabled={_viewModel.Settings.ScreenTranslationEnabled}.");
-        ++_screenTranslationRunId;
-        _screenTranslationTimer.Stop();
-        _translationOverlay?.Hide();
-        _screenTranslationCancellation?.Cancel();
-        _screenTranslationCancellation?.Dispose();
-        _screenTranslationCancellation = null;
-        _screenTranslationService.CancelActiveTranslation();
-        _isScreenTranslationRunning = false;
-    }
-
-    private async Task UpdateScreenTranslationAsync(CancellationToken cancellationToken = default, int? runId = null)
-    {
-        if (!cancellationToken.CanBeCanceled && _screenTranslationCancellation is not null)
-        {
-            cancellationToken = _screenTranslationCancellation.Token;
-        }
-
-        var activeRunId = runId ?? _screenTranslationRunId;
-        if (_isScreenTranslationRunning || !IsCurrentScreenTranslationRun(activeRunId, cancellationToken))
-        {
-            return;
-        }
-
-        _isScreenTranslationRunning = true;
-        try
-        {
-            var region = CurrentTranslationRegion();
-            if (!IsCurrentScreenTranslationRun(activeRunId, cancellationToken))
-            {
-                return;
-            }
-
-            _translationOverlay ??= new TranslationOverlayWindow();
-            _translationOverlay.SetRegion(region);
-            _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: update begin visible={_translationOverlay.IsVisible}, enabled={_viewModel.Settings.ScreenTranslationEnabled}, region={region}.");
-            var captureRegion = ToCaptureRectangle(region);
-            if (captureRegion.Width < 20 || captureRegion.Height < 20)
-            {
-                _translationOverlay.SetText(string.Empty, "Übersetzungsbereich liegt außerhalb des sichtbaren Bildschirms.");
-                _viewModel.AddDiagnosticLog("Warn", $"ScreenTranslation: capture region invalid after screen clamp: {captureRegion}.");
-                return;
-            }
-
-            var wasVisible = _translationOverlay.IsVisible;
-            ScreenTranslationResult result;
-            _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: capture with selected overlay text paused, visible={wasVisible}.");
-
-            try
-            {
-                // Hide the overlay completely during capture. Opacity=0 is not enough on some
-                // systems because the transparent/layered WPF window can still end up in the
-                // captured frame and Windows OCR then sees an empty/dimmed rectangle.
-                _translationOverlay.SetCaptureMode(true);
-                if (wasVisible)
-                {
-                    _translationOverlay.Hide();
-                }
-
-                await Task.Delay(350, cancellationToken);
-                if (!IsCurrentScreenTranslationRun(activeRunId, cancellationToken))
-                {
-                    return;
-                }
-
-                result = await _screenTranslationService.TranslateRegionAsync(
-                    captureRegion,
-                    _viewModel.Settings.ScreenTranslationTargetLanguage,
-                    cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: update cancelled.");
-                return;
-            }
-            catch (Exception ex)
-            {
-                result = new ScreenTranslationResult
-                {
-                    Status = "OCR fehlgeschlagen: " + ex.Message,
-                    TranslatedText = string.Empty,
-                    IsAvailable = false
-                };
-            }
-            finally
-            {
-                if (wasVisible && IsCurrentScreenTranslationRun(activeRunId, cancellationToken))
-                {
-                    if (!_translationOverlay.IsVisible)
-                    {
-                        _translationOverlay.Show();
-                        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: overlay was hidden, show called.");
-                    }
-
-                    _translationOverlay.SetRegion(region);
-                    _translationOverlay.SetCaptureMode(false);
-                    // Do not toggle Topmost here. On one-monitor setups this steals focus and can
-                    // bring the overlay/tool window into the selected capture area.
-                    _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: overlay refreshed visible={_translationOverlay.IsVisible}.");
-                }
-            }
-
-            if (!IsCurrentScreenTranslationRun(activeRunId, cancellationToken))
-            {
-                return;
-            }
-
-            _translationOverlay.SetStructuredText(result.Segments, result.TranslatedText, result.Status);
-            _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: update end visible={_translationOverlay.IsVisible}, textChars={result.TranslatedText.Length}, segments={result.Segments.Count}, status={result.Status}");
-        }
-        catch (Exception ex)
-        {
-            _viewModel.AddDiagnosticLog("Warn", "ScreenTranslation: update failed: " + ex.Message);
-        }
-        finally
-        {
-            _isScreenTranslationRunning = false;
-        }
-    }
-
-    private bool IsCurrentScreenTranslationRun(int runId, CancellationToken cancellationToken)
-    {
-        return _viewModel.Settings.ScreenTranslationEnabled
-            && !cancellationToken.IsCancellationRequested
-            && runId == _screenTranslationRunId;
-    }
-
-    private Rect CurrentTranslationRegion()
-    {
-        return new Rect(
-            _viewModel.Settings.ScreenTranslationLeft,
-            _viewModel.Settings.ScreenTranslationTop,
-            _viewModel.Settings.ScreenTranslationWidth,
-            _viewModel.Settings.ScreenTranslationHeight);
-    }
-
-    private static System.Drawing.Rectangle ToCaptureRectangle(Rect region)
-    {
-        var screen = Forms.SystemInformation.VirtualScreen;
-        var left = Math.Max(screen.Left, (int)Math.Round(region.Left));
-        var top = Math.Max(screen.Top, (int)Math.Round(region.Top));
-        var right = Math.Min(screen.Right, (int)Math.Round(region.Right));
-        var bottom = Math.Min(screen.Bottom, (int)Math.Round(region.Bottom));
-        return new System.Drawing.Rectangle(
-            left,
-            top,
-            Math.Max(0, right - left),
-            Math.Max(0, bottom - top));
-    }
-
-    private void ChooseTranslationRegionClick(object sender, RoutedEventArgs e)
-    {
-        ChooseTranslationRegion(restoreMainWindow: true);
-    }
-
-    private void CaptureScreenTranslationClick(object sender, RoutedEventArgs e)
-    {
-        TryCaptureScreenTranslation();
-    }
-
-    private async void CheckChromeTranslationClick(object sender, RoutedEventArgs e)
-    {
-        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: Chrome self-check requested.");
-        try
-        {
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-            var ok = await _screenTranslationService.CheckChromeTranslationAsync(
-                _viewModel.Settings.ScreenTranslationTargetLanguage,
-                timeout.Token);
-            _viewModel.AddDiagnosticLog(
-                ok ? "Info" : "Warn",
-                ok
-                    ? "ScreenTranslation: Chrome self-check passed."
-                    : "ScreenTranslation: Chrome self-check did not produce a usable translation.");
-        }
-        catch (OperationCanceledException)
-        {
-            _viewModel.AddDiagnosticLog("Warn", "ScreenTranslation: Chrome self-check timed out.");
-        }
-        catch (Exception ex)
-        {
-            _viewModel.AddDiagnosticLog("Warn", "ScreenTranslation: Chrome self-check failed: " + ex.Message);
-        }
-    }
-
-    private void ChooseTranslationRegion(bool restoreMainWindow)
-    {
-        var wasEnabled = _viewModel.Settings.ScreenTranslationEnabled;
-        var mainWasVisible = IsVisible;
-        var previousWindowState = WindowState;
-        var previousForeground = GetForegroundWindow();
-        _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: choose region start, wasEnabled={wasEnabled}.");
-        StopScreenTranslation();
-
-        // On a single monitor the tool window itself can cover the area the user wants to select.
-        // Minimize it while the selection overlay is active and do not set it as Owner, otherwise
-        // WPF keeps bringing the owner/tool window back to the foreground.
-        if (mainWasVisible)
-        {
-            WindowState = WindowState.Minimized;
-        }
-
-        try
-        {
-            var selector = new RegionSelectionWindow();
-            var selectedRegion = restoreMainWindow
-                ? selector.ShowDialog() == true ? selector.SelectedRegion : null
-                : ShowRegionSelectorWithoutAppReactivation(selector);
-
-            if (selectedRegion is { } region)
-            {
-                _viewModel.AddDiagnosticLog("Info", $"ScreenTranslation: region selected {region}.");
-                _viewModel.Settings.ScreenTranslationLeft = region.Left;
-                _viewModel.Settings.ScreenTranslationTop = region.Top;
-                _viewModel.Settings.ScreenTranslationWidth = region.Width;
-                _viewModel.Settings.ScreenTranslationHeight = region.Height;
-            }
-        }
-        finally
-        {
-            if (mainWasVisible && restoreMainWindow)
-            {
-                Show();
-                WindowState = previousWindowState;
-            }
-            else if (!restoreMainWindow)
-            {
-                if (mainWasVisible)
-                {
-                    Show();
-                    WindowState = WindowState.Minimized;
-                }
-
-                RestorePreviousForeground(previousForeground);
-            }
-        }
-
-        if (wasEnabled)
-        {
-            StartScreenTranslation();
-        }
-
-        _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: choose region end.");
-    }
-
-    private static Rect? ShowRegionSelectorWithoutAppReactivation(RegionSelectionWindow selector)
-    {
-        var frame = new System.Windows.Threading.DispatcherFrame();
-        selector.Closed += (_, _) => frame.Continue = false;
-        selector.Show();
-        System.Windows.Threading.Dispatcher.PushFrame(frame);
-        return selector.SelectedRegion;
-    }
-
-    private void RestorePreviousForeground(IntPtr previousForeground)
-    {
-        if (previousForeground == IntPtr.Zero || previousForeground == _windowHandle)
-        {
-            return;
-        }
-
-        _ = RestorePreviousForegroundAsync(previousForeground);
-    }
-
-    private async Task RestorePreviousForegroundAsync(IntPtr previousForeground)
-    {
-        // WPF/Windows can perform activation after the modal/selection window closes.
-        // Retry shortly after close so the selected game/window wins foreground again.
-        for (var attempt = 0; attempt < 4; attempt++)
-        {
-            if (GetForegroundWindow() == previousForeground)
-            {
-                return;
-            }
-
-            _ = SetForegroundWindow(previousForeground);
-            await Task.Delay(75);
         }
     }
 
@@ -1646,21 +1201,6 @@ public partial class MainWindow : Window
 
     private int ResolveHookHotkey(uint virtualKey)
     {
-        if (MatchesHotkey(_viewModel.Settings.ScreenTranslationHotkey, virtualKey))
-        {
-            return HotkeyScreenTranslation;
-        }
-
-        if (MatchesHotkey(_viewModel.Settings.ScreenTranslationCaptureHotkey, virtualKey))
-        {
-            return HotkeyScreenTranslationCapture;
-        }
-
-        if (MatchesHotkey(_viewModel.Settings.ScreenTranslationRegionHotkey, virtualKey))
-        {
-            return HotkeyScreenTranslationRegion;
-        }
-
         if (MatchesHotkey(_viewModel.Settings.UiDimmingHotkey, virtualKey))
         {
             return HotkeyUiDimming;
@@ -1744,9 +1284,6 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     private static void OpenExternalLink(string url)
     {

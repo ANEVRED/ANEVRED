@@ -43,7 +43,6 @@ Current recommendation examples:
 - launcher/process awareness
 - profile status
 - log and hotkey support
-- translation hotkey configuration
 
 ## Hardware Monitoring
 
@@ -58,8 +57,6 @@ Current recommendation examples:
 ## Logs
 
 - diagnostic application logs
-- screen translation status logs
-- OCR and translation pipeline messages
 - wrapped log messages for long diagnostics
 
 ## Settings
@@ -74,19 +71,7 @@ Current recommendation examples:
 - max process row count
 - Star Citizen client folder selection
 - hotkey capture
-- translation target language and region selection
 - protection rule editor
-
-## Live Translation Overlay
-
-- selectable screen region
-- manual capture hotkey
-- auto refresh mode
-- Windows OCR based text detection
-- Chrome Translator API integration when available
-- fallback to original OCR text when Chrome translation is unavailable
-- structured overlay blocks aligned to detected UI text
-- special handling for short Star Citizen UI labels, names, and action buttons
 
 ## Theming And UI
 
@@ -109,7 +94,7 @@ Current recommendation examples:
 
 ## Support and community
 
-ANEVRED includes optional support links in the Info page and splash screen. Support is never required to use the app, but it helps fund OCR improvements, Star Citizen integrations, UI dimming work, testing, and releases.
+ANEVRED includes optional support links in the Info page and splash screen. Support is never required to use the app, but it helps fund Star Citizen integrations, UI dimming work, monitoring improvements, testing, and releases.
 
 - Buy Me a Coffee: https://buymeacoffee.com/anevred
 - PayPal: https://paypal.me/Anevred

@@ -25,16 +25,6 @@ public sealed class AppSettings : INotifyPropertyChanged
     private string _starCitizenRespawnHotkey = "Ctrl+Alt+2";
     private string _starCitizenStutterHotkey = "Ctrl+Alt+3";
     private string _starCitizenPath = string.Empty;
-    private bool _screenTranslationEnabled;
-    private bool _screenTranslationAutoRefresh;
-    private string _screenTranslationHotkey = "Ctrl+Alt+T";
-    private string _screenTranslationCaptureHotkey = "Ctrl+Alt+R";
-    private string _screenTranslationRegionHotkey = "Ctrl+Alt+Shift+R";
-    private string _screenTranslationTargetLanguage = "de";
-    private double _screenTranslationLeft = 520;
-    private double _screenTranslationTop = 220;
-    private double _screenTranslationWidth = 700;
-    private double _screenTranslationHeight = 420;
     private bool _uiDimmingEnabled;
     private bool _uiDimmingAutoTuneEnabled;
     private string _uiDimmingHotkey = "Ctrl+Alt+D";
@@ -177,66 +167,6 @@ public sealed class AppSettings : INotifyPropertyChanged
     {
         get => _starCitizenPath;
         set => SetField(ref _starCitizenPath, value?.Trim() ?? string.Empty);
-    }
-
-    public bool ScreenTranslationEnabled
-    {
-        get => _screenTranslationEnabled;
-        set => SetField(ref _screenTranslationEnabled, value);
-    }
-
-    public bool ScreenTranslationAutoRefresh
-    {
-        get => _screenTranslationAutoRefresh;
-        set => SetField(ref _screenTranslationAutoRefresh, value);
-    }
-
-    public string ScreenTranslationHotkey
-    {
-        get => _screenTranslationHotkey;
-        set => SetField(ref _screenTranslationHotkey, NormalizeHotkey(value, "Ctrl+Alt+T"));
-    }
-
-    public string ScreenTranslationCaptureHotkey
-    {
-        get => _screenTranslationCaptureHotkey;
-        set => SetField(ref _screenTranslationCaptureHotkey, NormalizeHotkey(value, "Ctrl+Alt+R"));
-    }
-
-    public string ScreenTranslationRegionHotkey
-    {
-        get => _screenTranslationRegionHotkey;
-        set => SetField(ref _screenTranslationRegionHotkey, NormalizeHotkey(value, "Ctrl+Alt+Shift+R"));
-    }
-
-    public string ScreenTranslationTargetLanguage
-    {
-        get => _screenTranslationTargetLanguage;
-        set => SetField(ref _screenTranslationTargetLanguage, string.IsNullOrWhiteSpace(value) ? "de" : value.Trim());
-    }
-
-    public double ScreenTranslationLeft
-    {
-        get => _screenTranslationLeft;
-        set => SetField(ref _screenTranslationLeft, Math.Clamp(value, -20000, 20000));
-    }
-
-    public double ScreenTranslationTop
-    {
-        get => _screenTranslationTop;
-        set => SetField(ref _screenTranslationTop, Math.Clamp(value, -20000, 20000));
-    }
-
-    public double ScreenTranslationWidth
-    {
-        get => _screenTranslationWidth;
-        set => SetField(ref _screenTranslationWidth, Math.Clamp(value, 120, 4000));
-    }
-
-    public double ScreenTranslationHeight
-    {
-        get => _screenTranslationHeight;
-        set => SetField(ref _screenTranslationHeight, Math.Clamp(value, 80, 3000));
     }
 
     public bool UiDimmingEnabled
@@ -506,13 +436,6 @@ public sealed class AppSettings : INotifyPropertyChanged
         StarCitizenServerChangeHotkey = StarCitizenServerChangeHotkey;
         StarCitizenRespawnHotkey = StarCitizenRespawnHotkey;
         StarCitizenStutterHotkey = StarCitizenStutterHotkey;
-        ScreenTranslationHotkey = ScreenTranslationHotkey;
-        ScreenTranslationCaptureHotkey = ScreenTranslationCaptureHotkey;
-        ScreenTranslationRegionHotkey = ScreenTranslationRegionHotkey;
-        ScreenTranslationLeft = ScreenTranslationLeft;
-        ScreenTranslationTop = ScreenTranslationTop;
-        ScreenTranslationWidth = ScreenTranslationWidth;
-        ScreenTranslationHeight = ScreenTranslationHeight;
         UiDimmingHotkey = UiDimmingHotkey;
         UiDimmingOpacityPercent = UiDimmingOpacityPercent;
         UiDimmingRed = UiDimmingRed;

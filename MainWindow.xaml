@@ -852,7 +852,7 @@
                     <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Support ANEVRED Development" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8"/>
-                            <TextBlock Text="ANEVRED is free and developed in spare time. Every coffee helps fund new OCR improvements, Star Citizen integrations, testing, and future releases."
+                            <TextBlock Text="ANEVRED is free and developed in spare time. Every coffee helps fund Star Citizen integrations, monitoring improvements, testing, and future releases."
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,12"/>
@@ -886,9 +886,7 @@
                         <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}" Margin="8,0,0,0">
                             <StackPanel>
                                 <TextBlock Text="{Binding L[LicensesAndNotices]}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
-                                <TextBlock Text="{Binding L[ChromeLicenseNotice]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding L[ChromePrivacyNotice]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
-                                <TextBlock Text="{Binding L[ThirdPartyNotice]}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                                <TextBlock Text="{Binding L[ThirdPartyNotice]}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -1060,70 +1058,6 @@
                                 </Grid>
                                 <TextBlock Text="{Binding L[HotkeyFormatHint]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding HotkeyStatusText}" Foreground="{DynamicResource AccentBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                                <Separator Margin="0,12,0,12"/>
-                                <TextBlock Text="{Binding L[ScreenTranslation]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[ScreenTranslationEnabled]}" IsChecked="{Binding Settings.ScreenTranslationEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
-                                <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[ScreenTranslationAutoRefresh]}" IsChecked="{Binding Settings.ScreenTranslationAutoRefresh, Mode=TwoWay}" Margin="0,0,0,8"/>
-                                <TextBlock Text="{Binding L[TranslationProviderChromeSelected]}" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="130"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="150"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding L[ScreenTranslationHotkey]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Settings.ScreenTranslationHotkey}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                                    <Button Grid.Column="2" Content="{Binding L[PressHotkeyButton]}" Tag="Translation" Click="CaptureHotkeyButtonClick"/>
-                                </Grid>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="130"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="150"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding L[ScreenTranslationCaptureHotkey]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Settings.ScreenTranslationCaptureHotkey}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                                    <Button Grid.Column="2" Content="{Binding L[PressHotkeyButton]}" Tag="TranslationCapture" Click="CaptureHotkeyButtonClick"/>
-                                </Grid>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="130"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="150"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding L[ScreenTranslationRegionHotkey]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Settings.ScreenTranslationRegionHotkey}" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                                    <Button Grid.Column="2" Content="{Binding L[PressHotkeyButton]}" Tag="TranslationRegion" Click="CaptureHotkeyButtonClick"/>
-                                </Grid>
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="130"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="150"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding L[TargetLanguage]}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                    <ComboBox Grid.Column="1" SelectedValue="{Binding Settings.ScreenTranslationTargetLanguage, Mode=TwoWay}" SelectedValuePath="Tag" Margin="0,0,8,0">
-                                        <ComboBoxItem Content="Deutsch" Tag="de"/>
-                                        <ComboBoxItem Content="English" Tag="en"/>
-                                        <ComboBoxItem Content="Russian" Tag="ru"/>
-                                        <ComboBoxItem Content="Chinese (Simplified)" Tag="zh-Hans"/>
-                                        <ComboBoxItem Content="Chinese (Traditional)" Tag="zh-Hant"/>
-                                        <ComboBoxItem Content="French" Tag="fr"/>
-                                        <ComboBoxItem Content="Spanish" Tag="es"/>
-                                        <ComboBoxItem Content="Italian" Tag="it"/>
-                                        <ComboBoxItem Content="Polish" Tag="pl"/>
-                                        <ComboBoxItem Content="Ukrainian" Tag="uk"/>
-                                        <ComboBoxItem Content="Japanese" Tag="ja"/>
-                                        <ComboBoxItem Content="Korean" Tag="ko"/>
-                                    </ComboBox>
-                                    <Button Grid.Column="2" Content="{Binding L[ChooseScreenRegion]}" Click="ChooseTranslationRegionClick"/>
-                                </Grid>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <Button Content="{Binding L[TranslateNow]}" Click="CaptureScreenTranslationClick" MinWidth="150" Margin="0,0,8,0"/>
-                                    <Button Content="{Binding L[CheckChromeTranslation]}" Click="CheckChromeTranslationClick" MinWidth="150"/>
-                                </StackPanel>
-                                <TextBlock Text="{Binding L[ChromePrivacyNotice]}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                                <TextBlock Text="{Binding L[ScreenTranslationHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                                 <Separator Margin="0,12,0,12"/>
                                 <TextBlock Text="{Binding L[UiDimming]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                 <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[UiDimmingEnabled]}" IsChecked="{Binding Settings.UiDimmingEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>

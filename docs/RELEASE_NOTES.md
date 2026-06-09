@@ -1,5 +1,50 @@
 # Release Text
 
+## ANEVRED v0.3.3
+
+ANEVRED v0.3.3 is a safety and polish release focused on stronger default protection, clearer Star Citizen maintenance tools, UI dimming controls, support links, localization, and release metadata.
+
+### Safety And Process Protection
+
+- expanded the default protection list for Star Citizen, RSI Launcher, anti-cheat, GPU driver, audio, and input-device helper processes
+- added protection rule persistence upgrades so older settings receive new default safety rules automatically
+- improved protected-process visibility in the dashboard and settings area
+- added quick protection actions for selected processes
+- kept optimization actions conservative by skipping protected, critical, launcher, driver, and security-sensitive processes
+
+### Optimization And Cleanup
+
+- tightened CPU optimization so priorities are lowered more gradually where appropriate
+- tracked ANEVRED-changed process priorities so they can be restored when the app closes
+- improved background app closing behavior to request normal window close instead of forcing unsafe termination
+- clarified shader cache cleanup warnings and blocked cache clearing while Star Citizen is running
+- kept shader cache maintenance focused on detected Star Citizen cache folders
+
+### UI Dimming
+
+- added a full-screen RGB dimming overlay for bright scenes and visual comfort
+- added configurable dimming strength and RGB controls
+- added a dimming hotkey with default `Ctrl+Alt+D`
+- added automatic dimming tune from the current game image
+- limited the dimming overlay to the detected game monitor when possible
+
+### Support And Community
+
+- added support links in the application info area
+- added Buy Me a Coffee, PayPal, and RSI referral links to the README and documentation
+- added a dedicated support document and Buy Me a Coffee about text
+- clarified that support is optional and helps fund OCR, Star Citizen, UI dimming, testing, and future releases
+
+### Localization And UI Text
+
+- refreshed English, German, and Russian localization entries
+- added localized labels for UI dimming, protection rules, autostart, shader cache safety, and process actions
+- improved visible app text around protected processes and safer optimization behavior
+
+### Version
+
+- updated visible app version and project metadata to `0.3.3`
+
 ## ANEVRED v0.3.1
 
 ANEVRED v0.3.1 is a refinement release focused on Star Citizen session history, more reliable log matching, safer cleanup behavior, and clearer project positioning.
