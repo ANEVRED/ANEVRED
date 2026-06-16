@@ -12,9 +12,11 @@ public sealed class StarCitizenSessionHistoryService
     };
 
     private readonly string _path;
+    private readonly AppSettings _settings;
 
-    public StarCitizenSessionHistoryService(string appDataDirectory)
+    public StarCitizenSessionHistoryService(string appDataDirectory, AppSettings settings)
     {
+        _settings = settings;
         _path = Path.Combine(appDataDirectory, "starcitizen-sessions.json");
     }
 
@@ -28,7 +30,10 @@ public sealed class StarCitizenSessionHistoryService
         try
         {
             var json = File.ReadAllText(_path);
-            return JsonSerializer.Deserialize<List<StarCitizenSessionView>>(json, JsonOptions) ?? [];
+            return (JsonSerializer.Deserialize<List<StarCitizenSessionView>>(json, JsonOptions) ?? [])
+                .Where(IsRetained)
+                .Take(DataRetentionPolicy.MaxStarCitizenSessions)
+                .ToList();
         }
         catch
         {
@@ -39,7 +44,17 @@ public sealed class StarCitizenSessionHistoryService
     public void Save(IEnumerable<StarCitizenSessionView> sessions)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path) ?? string.Empty);
-        var json = JsonSerializer.Serialize(sessions.Take(250).ToList(), JsonOptions);
+        var retainedSessions = sessions
+            .Where(IsRetained)
+            .Take(DataRetentionPolicy.MaxStarCitizenSessions)
+            .ToList();
+        var json = JsonSerializer.Serialize(retainedSessions, JsonOptions);
         File.WriteAllText(_path, json);
+    }
+
+    private bool IsRetained(StarCitizenSessionView session)
+    {
+        var endedUtc = session.EndedUtc == default ? session.Ended.ToUniversalTime() : session.EndedUtc;
+        return DataRetentionPolicy.IsRetainedUtc(endedUtc, _settings);
     }
 }

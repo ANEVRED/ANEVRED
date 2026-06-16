@@ -67,7 +67,8 @@ public partial class MainWindow : Window
         _viewModel = new MainViewModel();
         _screenTranslationService = new Services.ScreenTranslationService(
             message => _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: " + message),
-            () => Dispatcher.BeginInvoke(new Action(ShowScreenTranslationBusy)));
+            () => Dispatcher.BeginInvoke(new Action(ShowScreenTranslationBusy)),
+            _viewModel.Settings);
         DataContext = _viewModel;
         _viewModel.ThemeChanged += (_, _) => ApplyTheme();
         _viewModel.NotificationRequested += ShowNotification;

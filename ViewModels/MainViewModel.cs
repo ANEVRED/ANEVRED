@@ -51,6 +51,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly StarCitizenSessionHistoryService _starCitizenSessionHistoryService;
     private readonly ShaderCacheService _shaderCacheService;
     private readonly LocalLearningService _learningService;
+    private readonly DataStorageService _dataStorageService;
     private readonly DispatcherTimer _timer = new();
     private SystemSnapshot? _lastSnapshot;
     private bool _isRefreshing;
@@ -95,14 +96,16 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         Settings = _settingsService.Load();
         L = new LocalizationService(Settings.Language);
+        var cleanedItems = new DataRetentionCleanupService(_settingsService.AppDataDirectory, Settings, message => AddLog("Info", message)).Cleanup();
         _protectionService = new ProcessProtectionService(Settings);
         _monitoringService = new MonitoringService(_protectionService);
         _optimizationService = new OptimizationService(Settings, _protectionService, L, AddLog);
         _powerPlanService = new PowerPlanService(L, AddLog);
         _memoryCompressionService = new MemoryCompressionService(L, AddLog);
+        _dataStorageService = new DataStorageService(_settingsService.AppDataDirectory, Settings, message => AddLog("Info", message));
         _learningService = new LocalLearningService(Settings, L, _settingsService.AppDataDirectory);
-        _starCitizenSessionHistoryService = new StarCitizenSessionHistoryService(_settingsService.AppDataDirectory);
-        _shaderCacheService = new ShaderCacheService(_settingsService.AppDataDirectory);
+        _starCitizenSessionHistoryService = new StarCitizenSessionHistoryService(_settingsService.AppDataDirectory, Settings);
+        _shaderCacheService = new ShaderCacheService(_settingsService.AppDataDirectory, Settings);
         LoadStarCitizenSessions();
 
         AddProtectionRuleCommand = new RelayCommand(_ => AddProtectionRule(), _ => !string.IsNullOrWhiteSpace(NewProtectionPattern));
@@ -130,6 +133,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         BackupShaderCacheCommand = new RelayCommand(_ => BackupShaderCache(), _ => !_isShaderCacheBusy);
         ClearShaderCacheCommand = new RelayCommand(_ => ClearShaderCache(), _ => !_isShaderCacheBusy);
         RestoreShaderCacheCommand = new RelayCommand(_ => RestoreShaderCache(), _ => !_isShaderCacheBusy);
+        RefreshDataStorageCommand = new RelayCommand(_ => RefreshDataStorage());
+        CleanupExpiredDataCommand = new RelayCommand(_ => CleanupExpiredData());
+        DeleteWorkDataCommand = new RelayCommand(_ => DeleteWorkData(keepSettings: true));
+        DeleteAllNonSettingsDataCommand = new RelayCommand(_ => DeleteWorkData(keepSettings: false));
 
         Settings.PropertyChanged += SettingsChanged;
         Settings.ProtectionRules.CollectionChanged += ProtectionRulesChanged;
@@ -144,7 +151,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         RefreshFeatureToggles();
         RefreshNavigationItems();
+        RefreshDataStorage();
         ScanShaderCache();
+        if (cleanedItems > 0)
+        {
+            AddLog("Info", L.Format("LogDataRetentionCleanup", cleanedItems));
+        }
+
         AddLog("Info", L["LogAppStarted"]);
     }
 
@@ -170,6 +183,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public ObservableCollection<LogEntry> Logs { get; } = [];
     public ObservableCollection<FeatureToggleViewModel> FeatureToggles { get; } = [];
     public ObservableCollection<ShaderCacheTargetView> ShaderCacheTargets { get; } = [];
+    public ObservableCollection<DataStorageItem> DataStorageItems { get; } = [];
 
     public IReadOnlyList<LanguageOption> SupportedLanguages { get; } =
     [
@@ -181,6 +195,38 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public IReadOnlyList<int> HistoryWindows { get; } = [5, 15, 60];
     public IReadOnlyList<AppProfile> Profiles { get; } = Enum.GetValues<AppProfile>();
     public IReadOnlyList<string> Themes { get; } = ["Dark", "Light"];
+    public IReadOnlyList<LanguageOption> DataRetentionOptions
+    {
+        get
+        {
+            var options = new List<LanguageOption>
+            {
+                new(nameof(DataRetentionMode.Session), L["DataRetentionSession"]),
+                new(nameof(DataRetentionMode.OneDay), L["DataRetentionOneDay"])
+            };
+
+            if (!Settings.PrivacyMaximumMode)
+            {
+                options.Add(new(nameof(DataRetentionMode.SevenDays), L["DataRetentionSevenDays"]));
+                options.Add(new(nameof(DataRetentionMode.FourteenDays), L["DataRetentionFourteenDays"]));
+                options.Add(new(nameof(DataRetentionMode.ThirtyDays), L["DataRetentionThirtyDays"]));
+            }
+
+            return options;
+        }
+    }
+
+    public string SelectedDataRetentionModeCode
+    {
+        get => Settings.DataRetentionMode.ToString();
+        set
+        {
+            if (Enum.TryParse<DataRetentionMode>(value, out var mode))
+            {
+                Settings.DataRetentionMode = mode;
+            }
+        }
+    }
 
     public string AppLogoSource => ThemeMode.Equals("Light", StringComparison.OrdinalIgnoreCase)
         ? "Assets/AppLogoLight.png"
@@ -211,6 +257,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public RelayCommand BackupShaderCacheCommand { get; }
     public RelayCommand ClearShaderCacheCommand { get; }
     public RelayCommand RestoreShaderCacheCommand { get; }
+    public RelayCommand RefreshDataStorageCommand { get; }
+    public RelayCommand CleanupExpiredDataCommand { get; }
+    public RelayCommand DeleteWorkDataCommand { get; }
+    public RelayCommand DeleteAllNonSettingsDataCommand { get; }
 
     public double RamUsagePercent => _lastSnapshot?.RamUsagePercent ?? 0;
     public double CpuUsagePercent => _lastSnapshot?.CpuUsagePercent ?? 0;
@@ -256,6 +306,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public string StarCitizenLogPathText => string.IsNullOrWhiteSpace(Settings.StarCitizenPath)
         ? L["StarCitizenLogAuto"]
         : Settings.StarCitizenPath;
+    public bool IsStarCitizenPathMissing => string.IsNullOrWhiteSpace(Settings.StarCitizenPath);
+    public string StarCitizenPathWarningText => L["StarCitizenPathWarning"];
     public string LastStarCitizenExitText => string.IsNullOrWhiteSpace(_lastStarCitizenExitText)
         ? L["StarCitizenExitNone"]
         : _lastStarCitizenExitText;
@@ -274,6 +326,25 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public string AutoOptimizationStatusText => Settings.AutoModeEnabled ? L["On"] : L["Off"];
     public string LocalLearningStatusText => Settings.LocalLearningEnabled ? L["On"] : L["Off"];
     public string PrivacyStatusText => Settings.PrivacyMaximumMode ? L["PrivacyMaximum"] : L["PrivacyLocalOnly"];
+    public string DataStoragePathText => _settingsService.AppDataDirectory;
+    public string DataRetentionSummaryText => Settings.PrivacyMaximumMode
+        ? L.Format("DataRetentionSummaryMaxPrivacy", DataRetentionDisplayText)
+        : L.Format("DataRetentionSummary", DataRetentionDisplayText);
+    public string DataRetentionHintText => Settings.PrivacyMaximumMode
+        ? L["DataRetentionMaxPrivacyHint"]
+        : L["DataRetentionFullOptionsHint"];
+    public string DataRetentionDisplayText => Settings.DataRetentionMode switch
+    {
+        DataRetentionMode.Session => L["DataRetentionSession"],
+        DataRetentionMode.OneDay => L["DataRetentionOneDay"],
+        DataRetentionMode.SevenDays => L["DataRetentionSevenDays"],
+        DataRetentionMode.ThirtyDays => L["DataRetentionThirtyDays"],
+        _ => L["DataRetentionFourteenDays"]
+    };
+    public string DataStorageSummaryText => L.Format(
+        "DataStorageSummary",
+        DataStorageItems.Count,
+        FormatBytes(DataStorageItems.Sum(item => item.SizeBytes)));
     public string PerformanceScoreText => CalculatePerformanceScore().ToString("0");
     public string PerformanceStateText => RamUsagePercent < 75 && CpuUsagePercent < 75 ? L["Optimal"] : RamUsagePercent < 90 && CpuUsagePercent < 90 ? L["Warning"] : L["Critical"];
     public MediaBrush PerformanceStateBrush => PerformanceStateText == L["Critical"]
@@ -433,6 +504,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             _lastProcessRefresh = DateTime.MinValue;
             RefreshFeatureToggles();
             RefreshNavigationItems();
+            RefreshLocalizedComputedText();
             SaveSettings();
             AddLog("Info", L["LogLanguageChanged"]);
             OnPropertyChanged();
@@ -1118,11 +1190,20 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             }
         }
 
-        if (e.PropertyName is nameof(AppSettings.AutoModeEnabled) or nameof(AppSettings.LocalLearningEnabled) or nameof(AppSettings.PrivacyMaximumMode))
+        if (e.PropertyName is nameof(AppSettings.AutoModeEnabled)
+            or nameof(AppSettings.LocalLearningEnabled)
+            or nameof(AppSettings.PrivacyMaximumMode)
+            or nameof(AppSettings.DataRetentionMode))
         {
             OnPropertyChanged(nameof(AutoOptimizationStatusText));
             OnPropertyChanged(nameof(LocalLearningStatusText));
             OnPropertyChanged(nameof(PrivacyStatusText));
+            OnPropertyChanged(nameof(DataRetentionDisplayText));
+            OnPropertyChanged(nameof(DataRetentionSummaryText));
+            OnPropertyChanged(nameof(DataRetentionHintText));
+            OnPropertyChanged(nameof(SelectedDataRetentionModeCode));
+            OnPropertyChanged(nameof(DataRetentionOptions));
+            RefreshDataStorage();
         }
 
         if (e.PropertyName is nameof(AppSettings.ProcessRefreshSeconds)
@@ -1179,6 +1260,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         if (e.PropertyName == nameof(AppSettings.StarCitizenPath))
         {
             OnPropertyChanged(nameof(StarCitizenLogPathText));
+            OnPropertyChanged(nameof(IsStarCitizenPathMissing));
+            OnPropertyChanged(nameof(StarCitizenPathWarningText));
             ScanShaderCache();
         }
 
@@ -1318,9 +1401,77 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private void ExportLogs()
     {
         var path = Path.Combine(_settingsService.AppDataDirectory, $"logs-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
-        var lines = Logs.Reverse().Select(log => $"{log.Time:O}\t{log.Level}\t{log.Message}");
+        var lines = Logs.Reverse().SelectMany(log =>
+        {
+            var header = $"{log.Time:O}\t{log.Level}\t{log.Message}";
+            return log.Details.Count == 0
+                ? Enumerable.Repeat(header, 1)
+                : new[] { header }.Concat(log.Details.Select(detail => $"{log.Time:O}\t{log.Level}\t  {detail}"));
+        });
         File.WriteAllLines(path, lines);
         AddLog("Info", L.Format("LogExported", path));
+        RefreshDataStorage();
+    }
+
+    private void RefreshLocalizedComputedText()
+    {
+        OnPropertyChanged(nameof(DataRetentionOptions));
+        OnPropertyChanged(nameof(SelectedDataRetentionModeCode));
+        OnPropertyChanged(nameof(DataRetentionDisplayText));
+        OnPropertyChanged(nameof(DataRetentionSummaryText));
+        OnPropertyChanged(nameof(DataRetentionHintText));
+        OnPropertyChanged(nameof(DataStorageSummaryText));
+        OnPropertyChanged(nameof(AutoOptimizationStatusText));
+        OnPropertyChanged(nameof(LocalLearningStatusText));
+        OnPropertyChanged(nameof(PrivacyStatusText));
+        OnPropertyChanged(nameof(ProcessRefreshSecondsText));
+        OnPropertyChanged(nameof(AutoRamIntervalText));
+        OnPropertyChanged(nameof(AutoCpuIntervalText));
+        OnPropertyChanged(nameof(StarCitizenLogPathText));
+        OnPropertyChanged(nameof(StarCitizenPathWarningText));
+    }
+
+    private void RefreshDataStorage()
+    {
+        DataStorageItems.Clear();
+        foreach (var item in _dataStorageService.GetItems())
+        {
+            DataStorageItems.Add(item);
+        }
+
+        OnPropertyChanged(nameof(DataStorageSummaryText));
+        OnPropertyChanged(nameof(DataStoragePathText));
+        OnPropertyChanged(nameof(DataRetentionSummaryText));
+        OnPropertyChanged(nameof(DataRetentionHintText));
+    }
+
+    private void CleanupExpiredData()
+    {
+        var deleted = _dataStorageService.CleanupExpired();
+        AddLog("Info", L.Format("LogDataRetentionCleanup", deleted));
+        RefreshDataStorage();
+    }
+
+    private void DeleteWorkData(bool keepSettings)
+    {
+        var title = keepSettings ? L["DeleteWorkDataConfirmTitle"] : L["DeleteAllDataConfirmTitle"];
+        var text = keepSettings ? L["DeleteWorkDataConfirmText"] : L["DeleteAllDataConfirmText"];
+        if (ConfirmationRequested?.Invoke(title, text) != true)
+        {
+            return;
+        }
+
+        var deleted = keepSettings
+            ? _dataStorageService.DeleteWorkData(keepSettings: true)
+            : _dataStorageService.DeleteAllNonSettingsData();
+        _learningService.Clear();
+        AddLog("Warn", L.Format("LogDataStorageDeleted", deleted));
+        StarCitizenSessions.Clear();
+        RefreshDataStorage();
+        OnPropertyChanged(nameof(DataStorageSummaryText));
+        OnPropertyChanged(nameof(StarCitizenSessionTotalsText));
+        OnPropertyChanged(nameof(StarCitizenSessionHealthText));
+        OnPropertyChanged(nameof(StarCitizenRecentProblemText));
     }
 
     public void AddDiagnosticLog(string level, string message)
@@ -1330,9 +1481,19 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void AddLog(string level, string message)
     {
+        AddLog(level, message, null);
+    }
+
+    private void AddLog(string level, string message, IReadOnlyList<string>? details)
+    {
         App.Current.Dispatcher.Invoke(() =>
         {
-            Logs.Insert(0, new LogEntry { Level = level, Message = message });
+            Logs.Insert(0, new LogEntry
+            {
+                Level = level,
+                Message = message,
+                Details = details?.Where(detail => !string.IsNullOrWhiteSpace(detail)).ToList() ?? []
+            });
             while (Logs.Count > 500)
             {
                 Logs.RemoveAt(Logs.Count - 1);
@@ -1878,9 +2039,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void LoadStarCitizenSessions()
     {
-        var sessions = _starCitizenSessionHistoryService.Load()
-            .Select(RefreshSessionLogEvidence)
-            .ToList();
+        var sessions = _starCitizenSessionHistoryService.Load().ToList();
+        sessions = RepairKnownBadStarCitizenSessions(sessions);
         sessions = MergeLogDiscoveredStarCitizenSessions(sessions);
         Replace(StarCitizenSessions, sessions);
         SaveStarCitizenSessions();
@@ -1904,6 +2064,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 continue;
             }
 
+            RememberStarCitizenLogPath(session.LogPath);
             var evidence = session.Evidence.Take(8).ToList();
             sessions.Add(new StarCitizenSessionView
             {
@@ -1939,6 +2100,129 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         return Math.Abs((existing.StartedUtc - discovered.StartedUtc).TotalMinutes) <= 3
             || Math.Abs((existing.EndedUtc - discovered.EndedUtc).TotalMinutes) <= 3;
+    }
+
+    private List<StarCitizenSessionView> RepairKnownBadStarCitizenSessions(List<StarCitizenSessionView> sessions)
+    {
+        var repaired = 0;
+        var result = sessions
+            .Select(session =>
+            {
+                if (!ShouldRepairKnownBadStarCitizenSession(session))
+                {
+                    return session;
+                }
+
+                var analysis = _starCitizenLogService.AnalyzeExit(
+                    Settings.StarCitizenPath,
+                    sessionLogOffset: 0,
+                    session.StartedUtc,
+                    session.EndedUtc);
+                if (!IsBetterStarCitizenExitAnalysis(session, analysis))
+                {
+                    return session;
+                }
+
+                RememberStarCitizenLogPath(analysis.LogPath);
+                repaired++;
+                return WithRepairedStarCitizenExit(session, analysis);
+            })
+            .ToList();
+
+        if (repaired > 0)
+        {
+            AddLog("Info", $"Repaired {repaired} Star Citizen session log detail entries from available logs.");
+        }
+
+        return result;
+    }
+
+    private void RememberStarCitizenLogPath(string logPath)
+    {
+        if (!string.IsNullOrWhiteSpace(Settings.StarCitizenPath)
+            || string.IsNullOrWhiteSpace(logPath))
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(logPath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return;
+        }
+
+        if (Path.GetFileName(directory).Equals("logbackups", StringComparison.OrdinalIgnoreCase))
+        {
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Settings.StarCitizenPath = directory;
+            OnPropertyChanged(nameof(StarCitizenLogPathText));
+        }
+    }
+
+    private static bool ShouldRepairKnownBadStarCitizenSession(StarCitizenSessionView session)
+    {
+        if (session.StartedUtc == default || session.EndedUtc == default)
+        {
+            return false;
+        }
+
+        var text = $"{session.ExitSummary} {session.LogEvidenceSummary}";
+        var hasWeakMissingEvidence = text.Contains("no notable log entry", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("kein auff", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("cause unclear", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Ursache unklar", StringComparison.OrdinalIgnoreCase);
+        var hasOnlyCrashArtifacts = session.LogEvidence.Count > 0
+            && session.LogEvidence.Any(IsCrashArtifactEvidence)
+            && !session.LogEvidence.Any(IsStrongCrashLogEvidence);
+
+        return hasWeakMissingEvidence || hasOnlyCrashArtifacts;
+    }
+
+    private static bool IsBetterStarCitizenExitAnalysis(StarCitizenSessionView session, StarCitizenExitAnalysis analysis)
+    {
+        if (analysis.StatusKey == "StarCitizenExitLogMissing" || analysis.Evidence.Count == 0)
+        {
+            return false;
+        }
+
+        var newHasStrongEvidence = analysis.Evidence.Any(IsStrongCrashLogEvidence)
+            || analysis.Evidence.Any(line => line.StartsWith("[") && !line.Contains("Crash artifact:", StringComparison.OrdinalIgnoreCase));
+        if (!newHasStrongEvidence && analysis.StatusKey == "StarCitizenExitUnknown")
+        {
+            return false;
+        }
+
+        var oldText = $"{session.ExitSummary}\n{session.LogEvidenceSummary}";
+        var newText = $"{analysis.StatusKey}\n{string.Join(Environment.NewLine, analysis.Evidence)}";
+        return !oldText.Equals(newText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private StarCitizenSessionView WithRepairedStarCitizenExit(StarCitizenSessionView session, StarCitizenExitAnalysis analysis)
+    {
+        var evidence = analysis.Evidence.Take(8).ToList();
+        return new StarCitizenSessionView
+        {
+            StartedUtc = session.StartedUtc,
+            EndedUtc = session.EndedUtc,
+            Started = session.Started,
+            Ended = session.Ended,
+            StartedText = session.StartedText,
+            EndedText = session.EndedText,
+            DurationText = session.DurationText,
+            PeakSummary = session.PeakSummary,
+            AutoStutterCount = session.AutoStutterCount,
+            PressureSpikeCount = session.PressureSpikeCount,
+            ManualEventCount = session.ManualEventCount,
+            ExitSummary = L.Format("StarCitizenExitShortSummary", L[analysis.StatusKey]),
+            LogEvidenceSummary = evidence.Count == 0
+                ? session.LogEvidenceSummary
+                : string.Join(Environment.NewLine, evidence),
+            LogEvidence = evidence.Count == 0 ? session.LogEvidence : evidence
+        };
     }
 
     private StarCitizenSessionView RefreshSessionLogEvidence(StarCitizenSessionView session)
@@ -1981,7 +2265,27 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         if (session.LogEvidence.Count == 0)
         {
-            return true;
+            return false;
+        }
+
+        if (session.LogEvidence.Any(line => line.StartsWith('<')))
+        {
+            return false;
+        }
+
+        var evidenceText = $"{session.ExitSummary} {session.LogEvidenceSummary}";
+        if (evidenceText.Contains("no notable log entry", StringComparison.OrdinalIgnoreCase)
+            || evidenceText.Contains("kein auffälliger Log-Eintrag", StringComparison.OrdinalIgnoreCase)
+            || evidenceText.Contains("cause unclear", StringComparison.OrdinalIgnoreCase)
+            || evidenceText.Contains("Ursache unklar", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (session.LogEvidence.Any(IsCrashArtifactEvidence)
+            && !session.LogEvidence.Any(IsStrongCrashLogEvidence))
+        {
+            return false;
         }
 
         var windowStart = session.StartedUtc.AddSeconds(-30);
@@ -1996,8 +2300,39 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             && timestamps.All(timestamp => timestamp >= windowStart && timestamp <= windowEnd);
     }
 
+    private static bool IsCrashArtifactEvidence(string line)
+    {
+        return line.StartsWith("Crash artifact:", StringComparison.OrdinalIgnoreCase)
+            || line.Contains(@"Star Citizen\Crashes", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsStrongCrashLogEvidence(string line)
+    {
+        return line.Contains("crash handler", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("exception", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("access violation", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("saved dump file", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static DateTime? TryReadLogTimestamp(string line)
     {
+        if (line.StartsWith('['))
+        {
+            var localEnd = line.IndexOf(']');
+            if (localEnd <= 1)
+            {
+                return null;
+            }
+
+            return DateTime.TryParse(
+                line[1..localEnd],
+                null,
+                System.Globalization.DateTimeStyles.AssumeLocal,
+                out var localTimestamp)
+                ? localTimestamp.ToUniversalTime()
+                : null;
+        }
+
         if (!line.StartsWith('<'))
         {
             return null;

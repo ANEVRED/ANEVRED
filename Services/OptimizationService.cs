@@ -29,7 +29,7 @@ public sealed class OptimizationService
     private readonly AppSettings _settings;
     private readonly ProcessProtectionService _protectionService;
     private readonly LocalizationService _localizer;
-    private readonly Action<string, string> _log;
+    private readonly Action<string, string, IReadOnlyList<string>?> _log;
     private readonly Dictionary<int, ProcessPriorityClass> _changedPriorities = [];
     private readonly int _ownProcessId = Environment.ProcessId;
 
@@ -37,7 +37,7 @@ public sealed class OptimizationService
         AppSettings settings,
         ProcessProtectionService protectionService,
         LocalizationService localizer,
-        Action<string, string> log)
+        Action<string, string, IReadOnlyList<string>?> log)
     {
         _settings = settings;
         _protectionService = protectionService;
@@ -79,6 +79,7 @@ public sealed class OptimizationService
         var measurableRelieved = 0;
         var denied = 0;
         var freedMb = 0d;
+        var details = new List<string>();
 
         foreach (var candidate in candidates)
         {
@@ -93,6 +94,11 @@ public sealed class OptimizationService
                 if (handle == IntPtr.Zero || !NativeMethods.EmptyWorkingSet(handle))
                 {
                     denied++;
+                    if (userRequested)
+                    {
+                        details.Add(_localizer.Format("LogMemoryOptimizationDeniedProcess", candidate.Name, candidate.Id));
+                    }
+
                     continue;
                 }
 
@@ -105,12 +111,23 @@ public sealed class OptimizationService
                     {
                         measurableRelieved++;
                         freedMb += delta;
+                        details.Add(_localizer.Format(
+                            "LogMemoryOptimizedProcess",
+                            candidate.Name,
+                            candidate.Id,
+                            candidate.MemoryMb,
+                            afterMb,
+                            delta));
                     }
                 }
             }
             catch
             {
                 denied++;
+                if (userRequested)
+                {
+                    details.Add(_localizer.Format("LogMemoryOptimizationDeniedProcess", candidate.Name, candidate.Id));
+                }
             }
             finally
             {
@@ -133,7 +150,8 @@ public sealed class OptimizationService
             protectedSkipped,
             activeSkipped,
             smallSkipped,
-            busySkipped));
+            busySkipped),
+            details);
     }
 
     public bool OptimizeCpu(IReadOnlyList<ProcessSnapshot> processes, bool userRequested = false)
@@ -163,7 +181,8 @@ public sealed class OptimizationService
                 _log("Info", _localizer.Format(
                     "LogCpuNoCandidates",
                     checkedCount,
-                    protectedSkipped));
+                    protectedSkipped),
+                    null);
             }
 
             return false;
@@ -172,6 +191,7 @@ public sealed class OptimizationService
         var changed = 0;
         var alreadyLow = 0;
         var denied = 0;
+        var details = new List<string>();
 
         foreach (var candidate in candidates)
         {
@@ -185,36 +205,57 @@ public sealed class OptimizationService
                 if (newPriority == currentPriority)
                 {
                     alreadyLow++;
+                    if (userRequested)
+                    {
+                        details.Add(_localizer.Format(
+                            "LogCpuPrioritySkippedProcess",
+                            candidate.Process.Name,
+                            candidate.Process.Id,
+                            currentPriority));
+                    }
+
                     continue;
                 }
 
                 _changedPriorities.TryAdd(candidate.Process.Id, currentPriority);
                 process.PriorityClass = newPriority;
                 changed++;
+                details.Add(_localizer.Format(
+                    "LogCpuPriorityChangedProcess",
+                    candidate.Process.Name,
+                    candidate.Process.Id,
+                    currentPriority,
+                    newPriority));
             }
             catch (Win32Exception)
             {
                 denied++;
+                LogCpuPriorityDenied(candidate.Process, details);
             }
             catch (UnauthorizedAccessException)
             {
                 denied++;
+                LogCpuPriorityDenied(candidate.Process, details);
             }
             catch (InvalidOperationException)
             {
                 denied++;
+                LogCpuPriorityDenied(candidate.Process, details);
             }
             catch (ArgumentException)
             {
                 denied++;
+                LogCpuPriorityDenied(candidate.Process, details);
             }
             catch (NotSupportedException)
             {
                 denied++;
+                LogCpuPriorityDenied(candidate.Process, details);
             }
             catch (SystemException)
             {
                 denied++;
+                LogCpuPriorityDenied(candidate.Process, details);
             }
         }
 
@@ -226,7 +267,8 @@ public sealed class OptimizationService
             changed,
             alreadyLow,
             denied,
-            protectedSkipped));
+            protectedSkipped),
+            details);
 
         return changed > 0 || alreadyLow > 0 || denied > 0;
     }
@@ -295,7 +337,8 @@ public sealed class OptimizationService
             candidates.Count,
             apiSuccess,
             denied,
-            protectedSkipped));
+            protectedSkipped),
+            null);
     }
 
     public IReadOnlyList<ProcessSnapshot> GetGamingKillSwitchCandidates(IReadOnlyList<ProcessSnapshot> processes)
@@ -359,7 +402,8 @@ public sealed class OptimizationService
             closeRequested,
             noWindowSkipped,
             denied,
-            names.Count == 0 ? "-" : string.Join(", ", names.Distinct().Take(8))));
+            names.Count == 0 ? "-" : string.Join(", ", names.Distinct().Take(8))),
+            null);
     }
 
     public void ResetChangedPriorities()
@@ -380,7 +424,7 @@ public sealed class OptimizationService
             }
         }
 
-        _log("Info", _localizer.Format("LogPrioritiesReset", restored));
+        _log("Info", _localizer.Format("LogPrioritiesReset", restored), null);
     }
 
     private MemorySkipReason ClassifyMemoryCandidate(ProcessSnapshot process, bool userRequested)
@@ -453,6 +497,11 @@ public sealed class OptimizationService
             ProcessPriorityClass.Normal => ProcessPriorityClass.BelowNormal,
             _ => priority
         };
+    }
+
+    private void LogCpuPriorityDenied(ProcessSnapshot process, List<string> details)
+    {
+        details.Add(_localizer.Format("LogCpuPriorityDeniedProcess", process.Name, process.Id));
     }
 
     private bool IsVramReliefCandidate(ProcessSnapshot process)

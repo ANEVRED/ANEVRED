@@ -619,6 +619,9 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
+                        <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12" BorderBrush="{DynamicResource CpuAccentBrush}" Visibility="{Binding IsStarCitizenPathMissing, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="{Binding StarCitizenPathWarningText}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap"/>
+                        </Border>
                         <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
                             <StackPanel>
                                 <TextBlock Text="Session History" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
@@ -822,14 +825,26 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn x:Name="LogTimeColumn" Binding="{Binding TimeText}" Width="86"/>
                                 <DataGridTextColumn x:Name="LogLevelColumn" Binding="{Binding Level}" Width="80"/>
-                                <DataGridTemplateColumn x:Name="LogMessageColumn" Width="*" ClipboardContentBinding="{Binding Message}">
+                                    <DataGridTemplateColumn x:Name="LogMessageColumn" Width="*" ClipboardContentBinding="{Binding Message}">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding Message}"
-                                                       TextWrapping="Wrap"
-                                                       TextTrimming="None"
-                                                       Padding="6,4"
-                                                       Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                            <StackPanel Margin="6,4">
+                                                <TextBlock Text="{Binding Message}"
+                                                           TextWrapping="Wrap"
+                                                           TextTrimming="None"
+                                                           Foreground="{DynamicResource PrimaryTextBrush}"/>
+                                                <Expander Header="{Binding DataContext.L[SessionLogDetails], RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          Margin="0,4,0,0"
+                                                          Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                        <TextBlock Text="{Binding DetailsText}"
+                                                                   Foreground="{DynamicResource DisabledTextBrush}"
+                                                                   FontSize="12"
+                                                                   TextWrapping="Wrap"
+                                                                   Margin="0,4,8,0"/>
+                                                    </ScrollViewer>
+                                                </Expander>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -931,6 +946,19 @@
                                 <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[LocalLearning]}" IsChecked="{Binding Settings.LocalLearningEnabled, Mode=TwoWay}" Margin="0,0,0,8"/>
                                 <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[PrivacyMaximum]}" IsChecked="{Binding Settings.PrivacyMaximumMode, Mode=TwoWay}" Margin="0,0,0,8"/>
                                 <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[Autostart]}" IsChecked="{Binding Settings.StartWithWindows, Mode=TwoWay}" Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="190"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding L[DataRetentionMode]}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding DataRetentionOptions}"
+                                              SelectedValue="{Binding SelectedDataRetentionModeCode, Mode=TwoWay}"
+                                              SelectedValuePath="Code"
+                                              DisplayMemberPath="DisplayName"/>
+                                </Grid>
+                                <TextBlock Text="{Binding DataRetentionHintText}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap" Margin="190,0,0,12"/>
                                 <Separator Margin="0,6,0,12"/>
                                 <TextBlock Text="{Binding L[FeatureSettings]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,6"/>
                                 <TextBlock Text="{Binding L[FeatureSettingsHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
@@ -1027,6 +1055,7 @@
                                     <TextBlock Text="{Binding StarCitizenLogPathText}" VerticalAlignment="Center" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                                     <Button Grid.Column="1" Content="{Binding L[ChooseFolder]}" Click="BrowseStarCitizenPathClick"/>
                                 </Grid>
+                                <TextBlock Text="{Binding StarCitizenPathWarningText}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap" Margin="0,-6,0,12" Visibility="{Binding IsStarCitizenPathMissing, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <CheckBox Style="{StaticResource CompactNeonSwitchCheckBoxStyle}" Content="{Binding L[EnableHotkeys]}" IsChecked="{Binding Settings.StarCitizenHotkeysEnabled, Mode=TwoWay}" Margin="0,0,0,12"/>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -1186,6 +1215,49 @@
                             </StackPanel>
                         </Border>
                     </Grid>
+                    <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="220"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{Binding L[DataStorageCenter]}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <Grid Grid.Row="1" Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="{Binding L[StoragePath]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,12,4"/>
+                                <TextBlock Grid.Column="1" Text="{Binding DataStoragePathText}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Grid.Row="1" Text="{Binding L[Retention]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,12,4"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DataRetentionSummaryText}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                <TextBlock Grid.Row="2" Text="{Binding L[StoredData]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DataStorageSummaryText}" Foreground="{DynamicResource DisabledTextBrush}" TextWrapping="Wrap"/>
+                            </Grid>
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding DataStorageItems}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Name], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Name}" Width="2*"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Type], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Kind}" Width="130"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Size], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding SizeText}" Width="100"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Changed], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding LastModifiedText}" Width="140"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Path], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Path}" Width="2*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <WrapPanel Grid.Row="3" Margin="0,12,0,0">
+                                <Button Content="{Binding L[Refresh]}" Command="{Binding RefreshDataStorageCommand}" MinWidth="120" Margin="0,0,8,8"/>
+                                <Button Content="{Binding L[CleanupExpiredData]}" Command="{Binding CleanupExpiredDataCommand}" MinWidth="160" Margin="0,0,8,8"/>
+                                <Button Content="{Binding L[DeleteWorkDataNow]}" Command="{Binding DeleteWorkDataCommand}" MinWidth="170" Margin="0,0,8,8"/>
+                                <Button Content="{Binding L[DeleteAllExceptSettings]}" Command="{Binding DeleteAllNonSettingsDataCommand}" MinWidth="210" Margin="0,0,8,8"/>
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
                     <Border Style="{StaticResource PanelCardStyle}">
                         <Grid>
                             <Grid.RowDefinitions>

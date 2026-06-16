@@ -19,7 +19,8 @@ public sealed class AppSettings : INotifyPropertyChanged
     private int _autoRamIntervalMinutes = 15;
     private int _autoCpuIntervalMinutes = 5;
     private bool _localLearningEnabled = true;
-    private bool _privacyMaximumMode = true;
+    private bool _privacyMaximumMode;
+    private DataRetentionMode _dataRetentionMode = DataRetentionMode.FourteenDays;
     private bool _starCitizenHotkeysEnabled = true;
     private string _starCitizenServerChangeHotkey = "Ctrl+Alt+1";
     private string _starCitizenRespawnHotkey = "Ctrl+Alt+2";
@@ -146,7 +147,25 @@ public sealed class AppSettings : INotifyPropertyChanged
     public bool PrivacyMaximumMode
     {
         get => _privacyMaximumMode;
-        set => SetField(ref _privacyMaximumMode, value);
+        set
+        {
+            if (SetField(ref _privacyMaximumMode, value) && value && DataRetentionMode > ANEVRED.Models.DataRetentionMode.OneDay)
+            {
+                DataRetentionMode = ANEVRED.Models.DataRetentionMode.OneDay;
+            }
+        }
+    }
+
+    public DataRetentionMode DataRetentionMode
+    {
+        get => _dataRetentionMode;
+        set
+        {
+            var normalized = PrivacyMaximumMode && value > ANEVRED.Models.DataRetentionMode.OneDay
+                ? ANEVRED.Models.DataRetentionMode.OneDay
+                : value;
+            SetField(ref _dataRetentionMode, normalized);
+        }
     }
 
     public bool StarCitizenHotkeysEnabled
@@ -503,6 +522,9 @@ public sealed class AppSettings : INotifyPropertyChanged
         MaxDisplayedProcesses = MaxDisplayedProcesses;
         AutoRamIntervalMinutes = AutoRamIntervalMinutes;
         AutoCpuIntervalMinutes = AutoCpuIntervalMinutes;
+        DataRetentionMode = Enum.IsDefined(typeof(ANEVRED.Models.DataRetentionMode), DataRetentionMode)
+            ? DataRetentionMode
+            : ANEVRED.Models.DataRetentionMode.FourteenDays;
         StarCitizenServerChangeHotkey = StarCitizenServerChangeHotkey;
         StarCitizenRespawnHotkey = StarCitizenRespawnHotkey;
         StarCitizenStutterHotkey = StarCitizenStutterHotkey;

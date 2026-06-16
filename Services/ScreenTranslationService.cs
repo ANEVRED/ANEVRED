@@ -24,11 +24,13 @@ public sealed class ScreenTranslationService : IDisposable
     private DateTime _lastOcr = DateTime.MinValue;
     private readonly ChromeTranslationService _chromeTranslation;
     private readonly Action? _ocrCompleted;
+    private readonly AppSettings? _settings;
 
-    public ScreenTranslationService(Action<string>? log = null, Action? ocrCompleted = null)
+    public ScreenTranslationService(Action<string>? log = null, Action? ocrCompleted = null, AppSettings? settings = null)
     {
         _log = log;
         _ocrCompleted = ocrCompleted;
+        _settings = settings;
         _chromeTranslation = new ChromeTranslationService(log);
     }
 
@@ -362,6 +364,7 @@ public sealed class ScreenTranslationService : IDisposable
                 "ANEVRED",
                 "OcrDebug");
             Directory.CreateDirectory(directory);
+            DataRetentionPolicy.DeleteOldFiles(directory, "*.png", int.MaxValue, _log, _settings);
             var path = Path.Combine(directory, fileName);
             bitmap.Save(path, ImageFormat.Png);
             _log?.Invoke("OCR debug capture saved: " + path);

@@ -78,12 +78,31 @@ public sealed class LocalLearningService
 
         Directory.CreateDirectory(Path.GetDirectoryName(_storePath)!);
         var recentSamples = _samples
+            .Where(sample => DataRetentionPolicy.IsRetainedUtc(sample.Time, _settings))
             .OrderByDescending(sample => sample.Time)
-            .Take(7200)
+            .Take(DataRetentionPolicy.MaxLearningSamples)
             .OrderBy(sample => sample.Time)
             .ToList();
+        _samples.Clear();
+        _samples.AddRange(recentSamples);
         File.WriteAllText(_storePath, JsonSerializer.Serialize(recentSamples, JsonOptions));
         _lastFlush = DateTime.UtcNow;
+    }
+
+    public void Clear()
+    {
+        _samples.Clear();
+        try
+        {
+            if (File.Exists(_storePath))
+            {
+                File.Delete(_storePath);
+            }
+        }
+        catch
+        {
+            // The privacy center also reports file cleanup. In-memory data is cleared either way.
+        }
     }
 
     private void Load()
@@ -98,7 +117,9 @@ public sealed class LocalLearningService
             var samples = JsonSerializer.Deserialize<List<SessionLearningSample>>(File.ReadAllText(_storePath), JsonOptions);
             if (samples is not null)
             {
-                _samples.AddRange(samples.TakeLast(7200));
+                _samples.AddRange(samples
+                    .Where(sample => DataRetentionPolicy.IsRetainedUtc(sample.Time, _settings))
+                    .TakeLast(DataRetentionPolicy.MaxLearningSamples));
             }
         }
         catch
@@ -126,7 +147,10 @@ public sealed class LocalLearningService
             TopProcesses = topProcesses
         });
 
-        while (_samples.Count > 7200)
+        var cutoffUtc = DataRetentionPolicy.GetWorkDataCutoffUtc(_settings);
+        _samples.RemoveAll(sample => sample.Time < cutoffUtc);
+
+        while (_samples.Count > DataRetentionPolicy.MaxLearningSamples)
         {
             _samples.RemoveAt(0);
         }

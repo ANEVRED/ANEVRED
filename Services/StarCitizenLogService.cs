@@ -9,15 +9,37 @@ public sealed class StarCitizenLogService
     private static readonly string[] CrashKeywords =
     [
         "crash",
+        "crash handler",
+        "public crash handler",
         "fatal",
         "exception",
         "access violation",
+        "exception_access_violation",
         "out of memory",
         "device removed",
         "dxgi_error",
         "gpu crash",
         "hung",
+        "saved dump file",
         "failed to allocate"
+    ];
+
+    private static readonly string[] CrashContextKeywords =
+    [
+        "process memory status",
+        "system memory status",
+        "level profile statistics",
+        "saved dump file",
+        "saved screenshot",
+        "saved cvar dump",
+        "saved build info",
+        "copied game.log",
+        "is fatal error",
+        "is gpu crash",
+        "is timeout",
+        "is out of system memory",
+        "is out of video memory",
+        "all crash related data"
     ];
 
     private static readonly string[] NetworkKeywords =
@@ -40,11 +62,13 @@ public sealed class StarCitizenLogService
         "client quitting game",
         "systemquit",
         "system quit",
+        "system fast shutdown",
+        "ccigbroker::fastshutdown",
+        "cgame::ondisconnected client quitting game",
         "quit requested",
         "exitcode=0",
         "shutdown",
-        "game shutdown",
-        "closing"
+        "game shutdown"
     ];
 
     public string FindLogPath(string configuredPath)
@@ -61,16 +85,26 @@ public sealed class StarCitizenLogService
         DateTime sessionStartedUtc,
         DateTime sessionEndedUtc)
     {
-        var primaryLogPath = FindLogPath(configuredPath);
+        var crashArtifactEvidence = FindCrashArtifactEvidence(sessionStartedUtc, sessionEndedUtc);
         var logPaths = FindLogCandidates(configuredPath)
             .Where(File.Exists)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(path => IsPotentialSessionLog(path, sessionStartedUtc, sessionEndedUtc))
             .ThenByDescending(path => new FileInfo(path).LastWriteTimeUtc)
-            .Take(12)
+            .Take(80)
             .ToList();
         if (logPaths.Count == 0)
         {
+            if (crashArtifactEvidence.Count > 0)
+            {
+                return new StarCitizenExitAnalysis
+                {
+                    StatusKey = "StarCitizenExitCrashLikely",
+                    Evidence = crashArtifactEvidence,
+                    Summary = string.Join(" | ", crashArtifactEvidence.Take(3))
+                };
+            }
+
             return new StarCitizenExitAnalysis
             {
                 StatusKey = "StarCitizenExitLogMissing",
@@ -81,21 +115,24 @@ public sealed class StarCitizenLogService
         var lines = logPaths
             .SelectMany(path => ReadRelevantLines(
                 path,
-                path.Equals(primaryLogPath, StringComparison.OrdinalIgnoreCase) ? sessionLogOffset : 0,
+                0,
                 sessionStartedUtc,
                 sessionEndedUtc))
-            .TakeLast(350)
             .ToList();
+        lines.AddRange(crashArtifactEvidence);
         var evidence = FindEvidence(lines);
         var status = Classify(evidence, lines);
+        var displayLogPath = logPaths
+            .FirstOrDefault(path => IsPotentialSessionLog(path, sessionStartedUtc, sessionEndedUtc))
+            ?? logPaths[0];
 
         return new StarCitizenExitAnalysis
         {
             StatusKey = status,
-            LogPath = string.IsNullOrWhiteSpace(primaryLogPath) ? logPaths[0] : primaryLogPath,
-            Evidence = evidence.Take(5).ToArray(),
+            LogPath = displayLogPath,
+            Evidence = evidence.Take(8).ToArray(),
             Summary = evidence.Count == 0
-                ? Path.GetFileName(string.IsNullOrWhiteSpace(primaryLogPath) ? logPaths[0] : primaryLogPath)
+                ? Path.GetFileName(displayLogPath)
                 : string.Join(" | ", evidence.Take(3))
         };
     }
@@ -133,7 +170,15 @@ public sealed class StarCitizenLogService
             var session = TryReadSessionFromLog(logPath, importSinceUtc);
             if (session is not null)
             {
-                sessions.Add(session);
+                var analysis = AnalyzeExit(configuredPath, 0, session.StartedUtc, session.EndedUtc);
+                sessions.Add(new StarCitizenLogSession
+                {
+                    StartedUtc = session.StartedUtc,
+                    EndedUtc = session.EndedUtc,
+                    StatusKey = analysis.StatusKey,
+                    LogPath = string.IsNullOrWhiteSpace(analysis.LogPath) ? session.LogPath : analysis.LogPath,
+                    Evidence = analysis.Evidence.Count == 0 ? session.Evidence : analysis.Evidence
+                });
             }
         }
 
@@ -153,6 +198,11 @@ public sealed class StarCitizenLogService
         }
 
         foreach (var candidate in GuessLogPaths())
+        {
+            yield return candidate;
+        }
+
+        foreach (var candidate in CrashLogPaths())
         {
             yield return candidate;
         }
@@ -217,23 +267,51 @@ public sealed class StarCitizenLogService
     {
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        var commonRoots = new[]
+        var commonRoots = new List<string>
         {
             Path.Combine(programFiles, "Roberts Space Industries", "StarCitizen"),
             Path.Combine(programFilesX86, "Roberts Space Industries", "StarCitizen"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "StarCitizen")
         };
-
-        foreach (var root in commonRoots.Where(Directory.Exists))
-        {
-            foreach (var channel in Channels)
+        commonRoots.AddRange(DriveInfo.GetDrives()
+            .Where(drive => drive.DriveType == DriveType.Fixed && drive.IsReady)
+            .SelectMany(drive => new[]
             {
-                var channelDirectory = Path.Combine(root, channel);
-                yield return Path.Combine(channelDirectory, "Game.log");
-                foreach (var backup in BackupLogs(channelDirectory).Take(6))
-                {
-                    yield return backup;
-                }
+                Path.Combine(drive.RootDirectory.FullName, "Roberts Space Industries", "StarCitizen"),
+                Path.Combine(drive.RootDirectory.FullName, "Cloud Imperium Games", "StarCitizen"),
+                Path.Combine(drive.RootDirectory.FullName, "games", "Cloud Imperium Games", "StarCitizen"),
+                Path.Combine(drive.RootDirectory.FullName, "Games", "Cloud Imperium Games", "StarCitizen")
+            }));
+
+        foreach (var root in commonRoots.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (var candidate in LogsUnderRoot(root))
+            {
+                yield return candidate;
+            }
+        }
+    }
+
+    private static IEnumerable<string> LogsUnderRoot(string root)
+    {
+        var direct = Path.Combine(root, "Game.log");
+        if (File.Exists(direct))
+        {
+            yield return direct;
+        }
+
+        foreach (var backup in BackupLogs(root).Take(8))
+        {
+            yield return backup;
+        }
+
+        foreach (var channel in Channels)
+        {
+            var channelDirectory = Path.Combine(root, channel);
+            yield return Path.Combine(channelDirectory, "Game.log");
+            foreach (var backup in BackupLogs(channelDirectory).Take(8))
+            {
+                yield return backup;
             }
         }
     }
@@ -265,6 +343,34 @@ public sealed class StarCitizenLogService
         }
     }
 
+    private static List<string> FindCrashArtifactEvidence(DateTime sessionStartedUtc, DateTime sessionEndedUtc)
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
+        {
+            return [];
+        }
+
+        var crashDirectory = Path.Combine(localAppData, "Star Citizen", "Crashes");
+        if (!Directory.Exists(crashDirectory))
+        {
+            return [];
+        }
+
+        var windowStart = sessionEndedUtc.AddMinutes(-10);
+        var windowEnd = sessionEndedUtc.AddMinutes(10);
+        var names = new[] { "error.dmp", "game.log", "screenshot.jpg", "cvar.dump", "build.info" };
+
+        return names
+            .Select(name => Path.Combine(crashDirectory, name))
+            .Where(File.Exists)
+            .Select(path => new FileInfo(path))
+            .Where(info => info.LastWriteTimeUtc >= windowStart && info.LastWriteTimeUtc <= windowEnd)
+            .OrderByDescending(info => info.LastWriteTimeUtc)
+            .Select(info => $"Crash artifact: {info.Name} saved at {info.LastWriteTime:yyyy-MM-dd HH:mm:ss}")
+            .ToList();
+    }
+
     private static List<string> ReadRelevantLines(
         string logPath,
         long sessionLogOffset,
@@ -287,14 +393,7 @@ public sealed class StarCitizenLogService
             var lines = reader.ReadToEnd()
                 .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .ToList();
-            var windowStart = sessionStartedUtc.AddSeconds(-30);
-            var windowEnd = sessionEndedUtc.AddSeconds(30);
-            var windowLines = lines
-                .Where(line => IsInTimeWindow(line, windowStart, windowEnd))
-                .TakeLast(500)
-                .ToList();
-
-            return windowLines;
+            return LinesInSessionWindow(lines, sessionStartedUtc, sessionEndedUtc);
         }
         catch
         {
@@ -309,25 +408,30 @@ public sealed class StarCitizenLogService
             var lines = File.ReadLines(logPath).ToList();
             DateTime? startedUtc = null;
             DateTime? endedUtc = null;
+            DateTime? lastTimestampUtc = null;
 
             foreach (var line in lines)
             {
                 var timestamp = TryReadTimestamp(line);
-                if (timestamp is null)
+                if (timestamp is not null)
                 {
-                    continue;
+                    lastTimestampUtc = timestamp.Value;
                 }
 
                 if (startedUtc is null && line.Contains("OnClientEnteredGame", StringComparison.OrdinalIgnoreCase))
                 {
-                    startedUtc = timestamp.Value;
+                    startedUtc = timestamp;
                 }
 
                 if (line.Contains("CCIGBroker::FastShutdown", StringComparison.OrdinalIgnoreCase)
                     || line.Contains("System Fast Shutdown", StringComparison.OrdinalIgnoreCase)
                     || line.Contains("<SystemQuit>", StringComparison.OrdinalIgnoreCase))
                 {
-                    endedUtc = timestamp.Value;
+                    endedUtc = timestamp ?? lastTimestampUtc ?? File.GetLastWriteTimeUtc(logPath);
+                }
+                else if (startedUtc is not null && ContainsAny(line, CrashKeywords))
+                {
+                    endedUtc = timestamp ?? lastTimestampUtc ?? File.GetLastWriteTimeUtc(logPath);
                 }
             }
 
@@ -341,10 +445,7 @@ public sealed class StarCitizenLogService
 
             var windowStart = startedUtc.Value.AddSeconds(-30);
             var windowEnd = endedUtc.Value.AddSeconds(30);
-            var windowLines = lines
-                .Where(line => IsInTimeWindow(line, windowStart, windowEnd))
-                .TakeLast(500)
-                .ToList();
+            var windowLines = LinesInWindow(lines, windowStart, windowEnd);
             var evidence = FindEvidence(windowLines);
 
             return new StarCitizenLogSession
@@ -362,18 +463,89 @@ public sealed class StarCitizenLogService
         }
     }
 
+    private static IEnumerable<string> CrashLogPaths()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
+        {
+            yield break;
+        }
+
+        var crashDirectory = Path.Combine(localAppData, "Star Citizen", "Crashes");
+        yield return Path.Combine(crashDirectory, "game.log");
+    }
+
+    private static List<string> LinesInSessionWindow(
+        IReadOnlyList<string> lines,
+        DateTime sessionStartedUtc,
+        DateTime sessionEndedUtc)
+    {
+        return LinesInWindow(lines, sessionStartedUtc.AddSeconds(-30), sessionEndedUtc.AddMinutes(5));
+    }
+
+    private static List<string> LinesInWindow(
+        IReadOnlyList<string> lines,
+        DateTime windowStartUtc,
+        DateTime windowEndUtc)
+    {
+        var result = new List<string>();
+        var includeContinuations = false;
+
+        foreach (var line in lines)
+        {
+            var timestamp = TryReadTimestamp(line);
+            if (timestamp is not null)
+            {
+                includeContinuations = timestamp.Value >= windowStartUtc && timestamp.Value <= windowEndUtc;
+            }
+
+            if (includeContinuations)
+            {
+                result.Add(line);
+            }
+        }
+
+        return result.TakeLast(700).ToList();
+    }
+
     private static List<string> FindEvidence(IReadOnlyList<string> lines)
     {
-        return lines
+        var evidence = lines
             .Where(line => ContainsAny(line, CrashKeywords)
                 || ContainsAny(line, NetworkKeywords)
-                || ContainsAny(line, NormalExitKeywords))
+                || ContainsAny(line, NormalExitKeywords)
+                || ContainsAny(line, CrashContextKeywords))
             .Select(TrimEvidence)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .TakeLast(12)
-            .Reverse()
             .ToList();
+
+        var strongCrashEvidence = evidence
+            .Where(IsStrongCrashEvidence)
+            .Take(8)
+            .ToList();
+        var supportingEvidence = evidence
+            .Where(line => !strongCrashEvidence.Contains(line, StringComparer.OrdinalIgnoreCase))
+            .TakeLast(12 - strongCrashEvidence.Count)
+            .ToList();
+
+        return strongCrashEvidence
+            .Concat(supportingEvidence)
+            .Take(12)
+            .ToList();
+    }
+
+    private static bool IsStrongCrashEvidence(string line)
+    {
+        return !line.StartsWith("Crash artifact:", StringComparison.OrdinalIgnoreCase)
+            && (line.Contains("crash handler", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("exception", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("access violation", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("saved dump file", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("is fatal error: Yes", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("is gpu crash: Yes", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("is out of system memory: Yes", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("is out of video memory: Yes", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string Classify(IReadOnlyList<string> evidence, IReadOnlyList<string> lines)
@@ -394,12 +566,6 @@ public sealed class StarCitizenLogService
         }
 
         return "StarCitizenExitUnknown";
-    }
-
-    private static bool IsInTimeWindow(string line, DateTime windowStartUtc, DateTime windowEndUtc)
-    {
-        var timestamp = TryReadTimestamp(line);
-        return timestamp is not null && timestamp.Value >= windowStartUtc && timestamp.Value <= windowEndUtc;
     }
 
     private static DateTime? TryReadTimestamp(string line)
@@ -431,7 +597,24 @@ public sealed class StarCitizenLogService
 
     private static string TrimEvidence(string line)
     {
-        var cleaned = line.Trim();
+        var cleaned = FormatEvidenceTimestamp(line.Trim());
         return cleaned.Length > 220 ? cleaned[..220] : cleaned;
+    }
+
+    private static string FormatEvidenceTimestamp(string line)
+    {
+        var timestamp = TryReadTimestamp(line);
+        if (timestamp is null)
+        {
+            return line;
+        }
+
+        var end = line.IndexOf('>');
+        if (end <= 0 || end >= line.Length - 1)
+        {
+            return $"[{timestamp.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}]";
+        }
+
+        return $"[{timestamp.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}] {line[(end + 1)..].TrimStart()}";
     }
 }

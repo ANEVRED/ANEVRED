@@ -1,14 +1,17 @@
 using System.IO;
 using System.IO.Compression;
+using ANEVRED.Models;
 
 namespace ANEVRED.Services;
 
 public sealed class ShaderCacheService
 {
     private readonly string _backupDirectory;
+    private readonly AppSettings _settings;
 
-    public ShaderCacheService(string appDataDirectory)
+    public ShaderCacheService(string appDataDirectory, AppSettings settings)
     {
+        _settings = settings;
         _backupDirectory = Path.Combine(appDataDirectory, "ShaderCacheBackups");
         Directory.CreateDirectory(_backupDirectory);
     }
@@ -38,6 +41,7 @@ public sealed class ShaderCacheService
 
     public ShaderCacheSnapshot Scan(string? starCitizenPath)
     {
+        CleanupBackups();
         var targets = GetTargets(starCitizenPath);
         var totalBytes = targets.Sum(target => GetDirectorySizeSafe(target.Path));
         var latestBackup = GetLatestBackup();
@@ -79,6 +83,7 @@ public sealed class ShaderCacheService
 
         ZipFile.CreateFromDirectory(staging, backupPath, CompressionLevel.Optimal, includeBaseDirectory: false);
         TryDeleteDirectory(staging);
+        CleanupBackups();
         return backupPath;
     }
 
@@ -139,9 +144,19 @@ public sealed class ShaderCacheService
 
     private string? GetLatestBackup()
     {
+        CleanupBackups();
         return Directory.EnumerateFiles(_backupDirectory, "star-citizen-shader-cache-*.zip")
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .FirstOrDefault();
+    }
+
+    private void CleanupBackups()
+    {
+        DataRetentionPolicy.DeleteOldFiles(
+            _backupDirectory,
+            "star-citizen-shader-cache-*.zip",
+            DataRetentionPolicy.MaxShaderCacheBackups,
+            settings: _settings);
     }
 
     private static void AddLocalStarCitizenTargets(List<ShaderCacheTarget> targets, string root)

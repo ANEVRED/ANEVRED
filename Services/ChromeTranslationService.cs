@@ -137,8 +137,8 @@ public sealed class ChromeTranslationService : IDisposable
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ANEVRED",
             "ChromeTranslatorProfile");
+        TryDeleteDirectory(_profileDirectory);
         Directory.CreateDirectory(_profileDirectory);
-        CleanupProfileCache(_profileDirectory);
 
         var startInfo = new ProcessStartInfo
         {
@@ -553,29 +553,8 @@ public sealed class ChromeTranslationService : IDisposable
             process.Dispose();
             if (!string.IsNullOrWhiteSpace(_profileDirectory))
             {
-                CleanupProfileCache(_profileDirectory);
+                TryDeleteDirectory(_profileDirectory);
             }
-        }
-    }
-
-    private static void CleanupProfileCache(string profileDirectory)
-    {
-        var cacheDirectories = new[]
-        {
-            "component_crx_cache",
-            "Safe Browsing",
-            "ShaderCache",
-            "GrShaderCache",
-            "GraphiteDawnCache",
-            Path.Combine("Default", "Cache"),
-            Path.Combine("Default", "Code Cache"),
-            Path.Combine("Default", "GPUCache"),
-            Path.Combine("Default", "DawnCache")
-        };
-
-        foreach (var relativePath in cacheDirectories)
-        {
-            TryDeleteDirectory(Path.Combine(profileDirectory, relativePath));
         }
     }
 
