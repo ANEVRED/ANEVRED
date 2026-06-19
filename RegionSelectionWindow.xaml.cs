@@ -13,9 +13,10 @@ public partial class RegionSelectionWindow : Window
 
     public Rect? SelectedRegion { get; private set; }
 
-    public RegionSelectionWindow()
+    public RegionSelectionWindow(string instruction)
     {
         InitializeComponent();
+        InstructionText.Text = instruction;
         Left = SystemParameters.VirtualScreenLeft;
         Top = SystemParameters.VirtualScreenTop;
         Width = SystemParameters.VirtualScreenWidth;

@@ -12,6 +12,6 @@
         Cursor="Cross">
     <Canvas x:Name="Surface" Background="Transparent" MouseLeftButtonDown="SurfaceMouseLeftButtonDown" MouseMove="SurfaceMouseMove" MouseLeftButtonUp="SurfaceMouseLeftButtonUp" MouseRightButtonDown="SurfaceMouseRightButtonDown">
         <Rectangle x:Name="SelectionRectangle" Stroke="#90CAF9" StrokeThickness="2" Fill="#22007ACC" Visibility="Collapsed"/>
-        <TextBlock Canvas.Left="20" Canvas.Top="20" Text="Linksklick halten und Bereich ziehen. Rechtsklick/Esc bricht ab." Foreground="White" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock x:Name="InstructionText" Canvas.Left="20" Canvas.Top="20" Foreground="White" FontSize="18" FontWeight="SemiBold"/>
     </Canvas>
 </Window>

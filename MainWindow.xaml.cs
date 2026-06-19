@@ -1437,7 +1437,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var selector = new RegionSelectionWindow();
+            var selector = new RegionSelectionWindow(_viewModel.L["RegionSelectionInstruction"]);
             var selectedRegion = restoreMainWindow
                 ? selector.ShowDialog() == true ? selector.SelectedRegion : null
                 : ShowRegionSelectorWithoutAppReactivation(selector);

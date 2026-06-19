@@ -515,7 +515,7 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Text="{Binding L[StarCitizenHub]}" FontSize="24" FontWeight="SemiBold"/>
-                                <TextBlock Text="Star Citizen live overview, session history and shader cache maintenance" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding L[StarCitizenHubSubtitle]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" HorizontalAlignment="Right">
                                 <TextBlock Text="{Binding StarCitizenStatusText}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource RamAccentBrush}" HorizontalAlignment="Right"/>
@@ -526,9 +526,9 @@
 
                     <Border Style="{StaticResource PanelCardStyle}" Padding="8" Margin="0,0,0,12">
                         <UniformGrid Columns="3">
-                            <RadioButton Content="OVERVIEW" GroupName="StarCitizenPages" IsChecked="{Binding IsStarCitizenOverviewPage, Mode=TwoWay}" Style="{StaticResource HudTabRadioStyle}" Margin="0,0,6,0"/>
-                            <RadioButton Content="SESSIONS" GroupName="StarCitizenPages" IsChecked="{Binding IsStarCitizenLogsPage, Mode=TwoWay}" Style="{StaticResource HudTabRadioStyle}" Margin="0,0,6,0"/>
-                            <RadioButton Content="CACHE" GroupName="StarCitizenPages" IsChecked="{Binding IsStarCitizenCachePage, Mode=TwoWay}" Style="{StaticResource HudTabRadioStyle}"/>
+                            <RadioButton Content="{Binding L[Overview]}" GroupName="StarCitizenPages" IsChecked="{Binding IsStarCitizenOverviewPage, Mode=TwoWay}" Style="{StaticResource HudTabRadioStyle}" Margin="0,0,6,0"/>
+                            <RadioButton Content="{Binding L[Sessions]}" GroupName="StarCitizenPages" IsChecked="{Binding IsStarCitizenLogsPage, Mode=TwoWay}" Style="{StaticResource HudTabRadioStyle}" Margin="0,0,6,0"/>
+                            <RadioButton Content="{Binding L[Cache]}" GroupName="StarCitizenPages" IsChecked="{Binding IsStarCitizenCachePage, Mode=TwoWay}" Style="{StaticResource HudTabRadioStyle}"/>
                         </UniformGrid>
                     </Border>
 
@@ -553,9 +553,9 @@
                             </Border>
                             <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Automatic Detection" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="{Binding L[AutomaticDetection]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <TextBlock Text="{Binding StarCitizenAutoDetectionText}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                    <TextBlock Text="Stutter is detected from frametime spikes. Pressure is detected from high RAM, VRAM or Star Citizen commit usage." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding L[AutomaticDetectionHint]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -567,7 +567,7 @@
                             </Grid.ColumnDefinitions>
                             <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,8,0">
                                 <StackPanel>
-                                    <TextBlock Text="Live Diagnostics" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="{Binding L[LiveDiagnostics]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <TextBlock Text="{Binding LastStarCitizenExitText}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap"/>
                                     <TextBlock Text="{Binding DefenderHintText}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                                     <TextBlock Text="{Binding StarCitizenRiskText}" Foreground="{DynamicResource AccentBrush}" Margin="0,10,0,0"/>
@@ -575,7 +575,7 @@
                             </Border>
                             <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Recent Events" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="{Binding L[RecentEvents]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <ScrollViewer MaxHeight="170" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                         <ItemsControl ItemsSource="{Binding StarCitizenEvents}">
                                             <ItemsControl.ItemTemplate>
@@ -606,16 +606,16 @@
                             </Grid.ColumnDefinitions>
                             <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,8,0">
                                 <StackPanel>
-                                    <TextBlock Text="Session Summary" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="{Binding L[SessionSummary]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <TextBlock Text="{Binding StarCitizenSessionHealthText}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                     <TextBlock Text="{Binding StarCitizenSessionTotalsText}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Issue Pattern" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                    <TextBlock Text="{Binding L[IssuePattern]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                     <TextBlock Text="{Binding StarCitizenRecentProblemText}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap"/>
-                                    <TextBlock Text="Automatic stutter and pressure spikes are counted per session and shown in the session history." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding L[IssuePatternHint]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -624,7 +624,7 @@
                         </Border>
                         <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
                             <StackPanel>
-                                <TextBlock Text="Session History" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock Text="{Binding L[SessionHistory]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
                                 <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                     <ItemsControl ItemsSource="{Binding StarCitizenSessions}">
                                         <ItemsControl.ItemTemplate>
@@ -642,7 +642,16 @@
                                                     <TextBlock Grid.Column="1" Text="{Binding DurationText}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"/>
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Text="{Binding PeakSummary}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
-                                                        <TextBlock Text="{Binding DetectionSummary}" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        <TextBlock Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0">
+                                                            <Run Text="{Binding DataContext.L[AutoStutterLabel], RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                            <Run Text="{Binding AutoStutterCount, StringFormat={}{0}}"/>
+                                                            <Run Text=" · "/>
+                                                            <Run Text="{Binding DataContext.L[PressureLabel], RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                            <Run Text="{Binding PressureSpikeCount, StringFormat={}{0}}"/>
+                                                            <Run Text=" · "/>
+                                                            <Run Text="{Binding DataContext.L[ManualLabel], RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                            <Run Text="{Binding ManualEventCount, StringFormat={}{0}}"/>
+                                                        </TextBlock>
                                                         <TextBlock Text="{Binding ExitDisplaySummary}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
                                                         <Expander Header="{Binding DataContext.L[SessionLogDetails], RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,4,0,0">
                                                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -694,16 +703,16 @@
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="0.8*"/></Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Shader Cache Manager" FontSize="18" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Star Citizen cache maintenance for patches, driver updates and stutter troubleshooting" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                                    <TextBlock Text="{Binding L[ShaderCacheManager]}" FontSize="18" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding L[ShaderCacheManagerHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
                                     <TextBlock Text="{Binding ShaderCacheSummaryText}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
                                     <TextBlock Text="{Binding ShaderCacheLastBackupText}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
                                 <UniformGrid Grid.Column="1" Columns="4" HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="12,2,0,0">
-                                    <Button Content="Scan" Command="{Binding ScanShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}" Margin="0,0,6,0"/>
-                                    <Button Content="Backup" Command="{Binding BackupShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}" Margin="0,0,6,0"/>
-                                    <Button Content="Clear" Command="{Binding ClearShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}" Margin="0,0,6,0"/>
-                                    <Button Content="Restore" Command="{Binding RestoreShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}"/>
+                                        <Button Content="{Binding L[Scan]}" Command="{Binding ScanShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}" Margin="0,0,6,0"/>
+                                        <Button Content="{Binding L[Backup]}" Command="{Binding BackupShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}" Margin="0,0,6,0"/>
+                                        <Button Content="{Binding L[Clear]}" Command="{Binding ClearShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}" Margin="0,0,6,0"/>
+                                        <Button Content="{Binding L[Restore]}" Command="{Binding RestoreShaderCacheCommand}" Style="{StaticResource ActionTileButtonStyle}"/>
                                 </UniformGrid>
                                 <ItemsControl Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding ShaderCacheTargets}" Margin="0,14,0,0">
                                     <ItemsControl.ItemTemplate>
@@ -731,11 +740,11 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="{Binding L[HardwareMonitor]}" FontSize="24" FontWeight="SemiBold"/>
-                            <TextBlock Text="Sensor console for temperatures, clocks, memory pressure, power and live trends" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding L[HardwareMonitorSubtitle]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                         <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}" Padding="14,9" MinWidth="210">
                             <StackPanel>
-                                <TextBlock Text="Sensor Health" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
+                                <TextBlock Text="{Binding L[SensorHealth]}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12"/>
                                 <TextBlock Text="{Binding HardwareHealthText}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
                             </StackPanel>
                         </Border>
@@ -749,21 +758,21 @@
                                     <RowDefinition Height="Auto"/><RowDefinition Height="68"/><RowDefinition Height="68"/><RowDefinition Height="68"/><RowDefinition Height="68"/><RowDefinition Height="68"/>
                                 </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="Live Sensor Trends" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12"/>
-                                <TextBlock Grid.Column="2" Text="last 5 min" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
-                                <TextBlock Grid.Row="1" Text="CPU Load" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding L[LiveSensorTrends]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock Grid.Column="2" Text="{Binding L[LastFiveMinutes]}" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
+                                <TextBlock Grid.Row="1" Text="{Binding L[CpuLoad]}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                 <controls:HistoryGraphControl Grid.Row="1" Grid.Column="1" Values="{Binding CpuHistory}" MaxPoints="300" Stroke="{DynamicResource CpuAccentBrush}" Fill="{DynamicResource GraphFillBrush}" Margin="0,8"/>
                                 <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding CpuUsageText}" Foreground="{DynamicResource CpuAccentBrush}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                <TextBlock Grid.Row="2" Text="RAM Pressure" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="2" Text="{Binding L[RamPressure]}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                 <controls:HistoryGraphControl Grid.Row="2" Grid.Column="1" Values="{Binding RamHistory}" MaxPoints="300" Stroke="{DynamicResource RamAccentBrush}" Fill="{DynamicResource GraphFillBrush}" Margin="0,8"/>
                                 <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding RamUsageText}" Foreground="{DynamicResource RamAccentBrush}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                <TextBlock Grid.Row="3" Text="GPU Load" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="3" Text="{Binding L[GpuLoad]}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                 <controls:HistoryGraphControl Grid.Row="3" Grid.Column="1" Values="{Binding GpuHistory}" MaxPoints="300" Stroke="{DynamicResource GpuAccentBrush}" Fill="{DynamicResource GraphFillBrush}" Margin="0,8"/>
                                 <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding GpuUsageText}" Foreground="{DynamicResource GpuAccentBrush}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                <TextBlock Grid.Row="4" Text="VRAM Pressure" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="4" Text="{Binding L[VramPressure]}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                 <controls:HistoryGraphControl Grid.Row="4" Grid.Column="1" Values="{Binding VramHistory}" MaxPoints="300" Stroke="{DynamicResource VramAccentBrush}" Fill="{DynamicResource GraphFillBrush}" Margin="0,8"/>
                                 <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding VramUsageText}" Foreground="{DynamicResource VramAccentBrush}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                <TextBlock Grid.Row="5" Text="Frametime" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="5" Text="{Binding L[Frametime]}" VerticalAlignment="Center" FontWeight="SemiBold"/>
                                 <controls:HistoryGraphControl Grid.Row="5" Grid.Column="1" Values="{Binding FrametimeHistory}" MaxPoints="300" Stroke="{DynamicResource FrametimeAccentBrush}" Fill="{DynamicResource GraphFillBrush}" Margin="0,8"/>
                                 <TextBlock Grid.Row="5" Grid.Column="2" Text="{Binding FrametimeText}" Foreground="{DynamicResource FrametimeAccentBrush}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                             </Grid>
@@ -771,13 +780,13 @@
                         <StackPanel Grid.Column="1">
                             <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,10">
                                 <StackPanel>
-                                    <TextBlock Text="Sensor Readout" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding L[SensorReadout]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                     <TextBlock Text="{Binding HardwareInsightText}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource PanelCardStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Device Details" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding L[DeviceDetails]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
                                     <Grid>
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <Border Background="{DynamicResource PanelAltBackgroundBrush}" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,0,6,0">
@@ -799,14 +808,14 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,10,0">
                             <StackPanel>
-                                <TextBlock Text="Temperatures / Cooling" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <TextBlock Text="CPU and GPU temperature sensors can be wired here through LibreHardwareMonitor. Fan RPM and hotspot sensors stay in this console, not in Dashboard." Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding L[TemperaturesCooling]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding L[TemperaturesCoolingHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                         <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Power / Clocks" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                                <TextBlock Text="Designed for watts, voltage, clock speed and throttle state once deeper hardware sensor backends are connected." Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding L[PowerClocks]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding L[PowerClocksHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -866,8 +875,8 @@
 
                     <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Support ANEVRED Development" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8"/>
-                            <TextBlock Text="ANEVRED is free and developed in spare time. Every coffee helps fund new OCR improvements, Star Citizen integrations, testing, and future releases."
+                            <TextBlock Text="{Binding L[SupportDevelopment]}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Text="{Binding L[SupportDevelopmentText]}"
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,12"/>
@@ -1379,7 +1388,9 @@
                 <Run Text="{Binding L[Profile], Mode=OneWay}"/>
                 <Run Text=": "/>
                 <Run Text="{Binding CurrentProfileText, Mode=OneWay}"/>
-                <Run Text=" | VRAM: "/>
+                <Run Text=" | "/>
+                <Run Text="{Binding L[Vram], Mode=OneWay}"/>
+                <Run Text=": "/>
                 <Run Text="{Binding VramPressureText, Mode=OneWay}"/>
                 <Run Text=" | "/>
                 <Run Text="{Binding ProtectedStatusText, Mode=OneWay}"/>

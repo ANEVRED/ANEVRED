@@ -84,17 +84,18 @@ public static class DataRetentionPolicy
         return deleted;
     }
 
-    public static void DeleteOldDirectories(
+    public static int DeleteOldDirectories(
         string directory,
-        TimeSpan retention,
+        AppSettings settings,
         Action<string>? log = null)
     {
         if (!Directory.Exists(directory))
         {
-            return;
+            return 0;
         }
 
-        var cutoffUtc = DateTime.UtcNow - retention;
+        var deleted = 0;
+        var cutoffUtc = GetWorkDataCutoffUtc(settings);
         foreach (var child in Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly))
         {
             try
@@ -103,6 +104,7 @@ public static class DataRetentionPolicy
                 if (info.LastWriteTimeUtc < cutoffUtc)
                 {
                     Directory.Delete(child, recursive: true);
+                    deleted++;
                 }
             }
             catch (Exception ex)
@@ -110,6 +112,8 @@ public static class DataRetentionPolicy
                 log?.Invoke($"Data retention cleanup skipped {child}: {ex.Message}");
             }
         }
+
+        return deleted;
     }
 
     public static int DeleteDirectory(string path, Action<string>? log = null)

@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Http;
+using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -19,6 +21,11 @@ public sealed class ChromeTranslationService : IDisposable
     private readonly Action<string>? _log;
     private Process? _chromeProcess;
     private string? _profileDirectory;
+    private TcpListener? _hostListener;
+    private CancellationTokenSource? _hostCancellation;
+    private Task? _hostTask;
+    private string? _hostPageUrl;
+    private int _debugPort;
 
     public ChromeTranslationService(Action<string>? log = null)
     {
@@ -125,25 +132,27 @@ public sealed class ChromeTranslationService : IDisposable
     {
         if (_chromeProcess is { HasExited: false } && !string.IsNullOrWhiteSpace(_profileDirectory))
         {
-            var existingPort = await ReadDevToolsPortAsync(_profileDirectory, cancellationToken);
-            if (existingPort > 0)
+            if (_debugPort > 0 && await IsDevToolsReadyAsync(_debugPort, cancellationToken))
             {
-                return existingPort;
+                return _debugPort;
             }
         }
 
         StopChrome();
-        _profileDirectory = Path.Combine(
+        var profileRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ANEVRED",
             "ChromeTranslatorProfile");
-        TryDeleteDirectory(_profileDirectory);
+        Directory.CreateDirectory(profileRoot);
+        _profileDirectory = Path.Combine(profileRoot, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_profileDirectory);
+        _hostPageUrl = EnsureHostPage();
+        _debugPort = GetAvailablePort();
 
         var startInfo = new ProcessStartInfo
         {
             FileName = chromePath,
-            Arguments = $"--headless=new --disable-gpu --disable-background-networking --disable-sync --no-first-run --no-default-browser-check --remote-debugging-port=0 --user-data-dir=\"{_profileDirectory}\" about:blank",
+            Arguments = $"--headless=new --disable-sync --no-first-run --no-default-browser-check --remote-debugging-port={_debugPort} --user-data-dir=\"{_profileDirectory}\" \"{_hostPageUrl}\"",
             UseShellExecute = false,
             CreateNoWindow = true
         };
@@ -155,6 +164,7 @@ public sealed class ChromeTranslationService : IDisposable
         catch (Exception ex)
         {
             _log?.Invoke("Chrome translation failed: Chrome could not start: " + ex.Message);
+            CleanupProfileDirectory();
             return 0;
         }
 
@@ -162,17 +172,17 @@ public sealed class ChromeTranslationService : IDisposable
         while (DateTime.UtcNow - started < TimeSpan.FromSeconds(8))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var port = await ReadDevToolsPortAsync(_profileDirectory, cancellationToken);
-            if (port > 0)
+            if (await IsDevToolsReadyAsync(_debugPort, cancellationToken))
             {
                 _log?.Invoke("Chrome translation runtime started.");
-                return port;
+                return _debugPort;
             }
 
             await Task.Delay(150, cancellationToken);
         }
 
         _log?.Invoke("Chrome translation failed: DevTools port was not ready.");
+        StopChrome();
         return 0;
     }
 
@@ -195,9 +205,9 @@ public sealed class ChromeTranslationService : IDisposable
         }
     }
 
-    private static async Task<DevToolsTarget?> CreateDevToolsTabAsync(int port, CancellationToken cancellationToken)
+    private async Task<DevToolsTarget?> CreateDevToolsTabAsync(int port, CancellationToken cancellationToken)
     {
-        var url = "http://127.0.0.1:" + port + "/json/new?" + Uri.EscapeDataString(EnsureTranslatorHostPage());
+        var url = "http://127.0.0.1:" + port + "/json/new?" + Uri.EscapeDataString(_hostPageUrl ?? EnsureHostPage());
         using var request = new HttpRequestMessage(HttpMethod.Put, url);
         using var response = await HttpClient.SendAsync(request, cancellationToken);
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -209,33 +219,98 @@ public sealed class ChromeTranslationService : IDisposable
         return JsonSerializer.Deserialize<DevToolsTarget>(json);
     }
 
-    private static string EnsureTranslatorHostPage()
+    private string EnsureHostPage()
     {
-        var directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ANEVRED",
-            "ChromeTranslatorProfile");
-        Directory.CreateDirectory(directory);
-
-        var path = Path.Combine(directory, "translator-host.html");
-        if (!File.Exists(path))
+        if (_hostListener is not null && !string.IsNullOrWhiteSpace(_hostPageUrl))
         {
-            File.WriteAllText(
-                path,
-                """
+            return _hostPageUrl;
+        }
+
+        _hostCancellation = new CancellationTokenSource();
+        _hostListener = new TcpListener(IPAddress.Loopback, 0);
+        _hostListener.Start();
+        var port = ((IPEndPoint)_hostListener.LocalEndpoint).Port;
+        _hostPageUrl = $"http://127.0.0.1:{port}/";
+        _hostTask = RunHostServerAsync(_hostListener, _hostCancellation.Token);
+        return _hostPageUrl;
+    }
+
+    private static async Task<bool> IsDevToolsReadyAsync(int port, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await HttpClient.GetAsync(
+                $"http://127.0.0.1:{port}/json/version",
+                cancellationToken);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static int GetAvailablePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
+    private static async Task RunHostServerAsync(TcpListener listener, CancellationToken cancellationToken)
+    {
+        const string html = """
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
   <title>ANEVRED Chrome Translator Host</title>
 </head>
 <body></body>
 </html>
-""",
-                Encoding.UTF8);
-        }
+""";
+        var body = Encoding.UTF8.GetBytes(html);
+        var header = Encoding.ASCII.GetBytes(
+            "HTTP/1.1 200 OK\r\n" +
+            "Content-Type: text/html; charset=utf-8\r\n" +
+            $"Content-Length: {body.Length}\r\n" +
+            "Cache-Control: no-store\r\n" +
+            "Connection: close\r\n\r\n");
 
-        return new Uri(path).AbsoluteUri;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            TcpClient? client = null;
+            try
+            {
+                client = await listener.AcceptTcpClientAsync(cancellationToken);
+                await using var stream = client.GetStream();
+                await stream.WriteAsync(header, cancellationToken);
+                await stream.WriteAsync(body, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
+            finally
+            {
+                client?.Dispose();
+            }
+        }
     }
 
     private async Task<string> EvaluateTranslationAsync(
@@ -542,6 +617,7 @@ public sealed class ChromeTranslationService : IDisposable
             if (!process.HasExited)
             {
                 process.Kill(entireProcessTree: true);
+                process.WaitForExit(3000);
             }
         }
         catch
@@ -551,31 +627,81 @@ public sealed class ChromeTranslationService : IDisposable
         finally
         {
             process.Dispose();
-            if (!string.IsNullOrWhiteSpace(_profileDirectory))
-            {
-                TryDeleteDirectory(_profileDirectory);
-            }
+            CleanupProfileDirectory();
+            _debugPort = 0;
         }
     }
 
-    private static void TryDeleteDirectory(string path)
+    private void CleanupProfileDirectory()
+    {
+        if (string.IsNullOrWhiteSpace(_profileDirectory))
+        {
+            return;
+        }
+
+        var profileDirectory = _profileDirectory;
+        _profileDirectory = null;
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            if (TryDeleteDirectory(profileDirectory))
+            {
+                TryDeleteEmptyParentDirectory(profileDirectory);
+                return;
+            }
+
+            Thread.Sleep(150);
+        }
+
+        _log?.Invoke("Chrome translation profile cleanup deferred to the data retention cleanup.");
+    }
+
+    private static bool TryDeleteDirectory(string path)
     {
         try
         {
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
             {
-                Directory.Delete(path, recursive: true);
+                return true;
             }
+
+            Directory.Delete(path, recursive: true);
+            return true;
         }
         catch
         {
             // Best-effort cache cleanup. Chrome may keep files locked briefly.
+            return false;
+        }
+    }
+
+    private static void TryDeleteEmptyParentDirectory(string path)
+    {
+        try
+        {
+            var parent = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(parent)
+                && Directory.Exists(parent)
+                && !Directory.EnumerateFileSystemEntries(parent).Any())
+            {
+                Directory.Delete(parent);
+            }
+        }
+        catch
+        {
+            // The retention cleanup handles any empty or stale parent later.
         }
     }
 
     public void Dispose()
     {
         StopChrome();
+        _hostCancellation?.Cancel();
+        _hostListener?.Stop();
+        _hostCancellation?.Dispose();
+        _hostCancellation = null;
+        _hostListener = null;
+        _hostTask = null;
+        _hostPageUrl = null;
     }
 
     private sealed record DevToolsTarget(

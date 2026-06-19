@@ -42,9 +42,17 @@ public sealed class DataRetentionCleanupService
             _log,
             _settings);
 
-        deleted += DataRetentionPolicy.DeleteDirectory(
-            Path.Combine(_appDataDirectory, "ChromeTranslatorProfile"),
+        var chromeProfileRoot = Path.Combine(_appDataDirectory, "ChromeTranslatorProfile");
+        deleted += DataRetentionPolicy.DeleteOldDirectories(
+            chromeProfileRoot,
+            _settings,
             _log);
+        deleted += DataRetentionPolicy.DeleteOldFiles(
+            chromeProfileRoot,
+            "*",
+            int.MaxValue,
+            _log,
+            _settings);
 
         return deleted;
     }

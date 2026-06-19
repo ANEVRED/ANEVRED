@@ -76,8 +76,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private ProtectionRule? _selectedProtectionRule;
     private Recommendation? _selectedRecommendation;
     private string _hotkeyStatusText = string.Empty;
-    private string _shaderCacheStatusText = "Not scanned";
-    private string _shaderCacheLastBackupText = "No backup";
+    private string _shaderCacheStatusText = string.Empty;
+    private string _shaderCacheLastBackupText = string.Empty;
+    private long _shaderCacheLastTotalBytes;
+    private string? _shaderCacheLatestBackupPath;
     private bool _isShaderCacheBusy;
     private DateTime _lastAutoStutterDetected = DateTime.MinValue;
     private DateTime _lastAutoPressureDetected = DateTime.MinValue;
@@ -96,6 +98,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         Settings = _settingsService.Load();
         L = new LocalizationService(Settings.Language);
+        _shaderCacheStatusText = L["NotScanned"];
+        _shaderCacheLastBackupText = L["NoBackup"];
         var cleanedItems = new DataRetentionCleanupService(_settingsService.AppDataDirectory, Settings, message => AddLog("Info", message)).Cleanup();
         _protectionService = new ProcessProtectionService(Settings);
         _monitoringService = new MonitoringService(_protectionService);
@@ -294,9 +298,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         private set => SetField(ref _shaderCacheLastBackupText, value);
     }
     public string ShaderCacheSummaryText => ShaderCacheTargets.Count == 0
-        ? "No Star Citizen shader cache found. Set the Star Citizen folder or start the game once."
-        : $"{ShaderCacheTargets.Count} cache location(s) · {ShaderCacheStatusText}";
-    public string ShaderCacheClearHintText => "Clear deletes detected cache folders without creating a backup. Close Star Citizen before clearing or restoring cache files.";
+        ? L["ShaderCacheNotFoundHint"]
+        : L.Format("ShaderCacheLocationsSummary", ShaderCacheTargets.Count, ShaderCacheStatusText);
+    public string ShaderCacheClearHintText => L["ShaderCacheClearHint"];
     public string ProcessCountText => Processes.Count.ToString();
     public string LastLogText => Logs.FirstOrDefault()?.Message ?? string.Empty;
     public string TrayText => $"RAM {RamUsagePercent:0}% | CPU {CpuUsagePercent:0}%";
@@ -772,7 +776,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async void ScanShaderCache()
     {
-        if (!BeginShaderCacheOperation("Scanning..."))
+        if (!BeginShaderCacheOperation(L["Scanning"]))
         {
             return;
         }
@@ -785,7 +789,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            ShaderCacheStatusText = $"Scan failed: {ex.Message}";
+            ShaderCacheStatusText = L.Format("ScanFailed", ex.Message);
             OnPropertyChanged(nameof(ShaderCacheSummaryText));
         }
         finally
@@ -796,7 +800,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async void BackupShaderCache()
     {
-        if (!BeginShaderCacheOperation("Creating backup..."))
+        if (!BeginShaderCacheOperation(L["CreatingBackup"]))
         {
             return;
         }
@@ -810,13 +814,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 return (BackupPath: backupPath, Scan: BuildShaderCacheScanResult(starCitizenPath));
             });
 
-            AddLog("Info", $"Shader cache backup created: {result.BackupPath}");
+            AddLog("Info", L.Format("LogShaderCacheBackupCreated", result.BackupPath));
             ApplyShaderCacheScanResult(result.Scan);
         }
         catch (Exception ex)
         {
-            AddLog("Warn", $"Shader cache backup failed: {ex.Message}");
-            ShaderCacheStatusText = $"Backup failed: {ex.Message}";
+            AddLog("Warn", L.Format("LogShaderCacheBackupFailed", ex.Message));
+            ShaderCacheStatusText = L.Format("BackupFailed", ex.Message);
             OnPropertyChanged(nameof(ShaderCacheSummaryText));
         }
         finally
@@ -842,7 +846,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        if (!BeginShaderCacheOperation("Clearing cache..."))
+        if (!BeginShaderCacheOperation(L["ClearingCache"]))
         {
             return;
         }
@@ -856,13 +860,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 return (Cleared: cleared, Scan: BuildShaderCacheScanResult(starCitizenPath));
             });
 
-            AddLog("Info", $"Shader cache cleared ({result.Cleared} folder(s)). No backup was created.");
+            AddLog("Info", L.Format("LogShaderCacheCleared", result.Cleared));
             ApplyShaderCacheScanResult(result.Scan);
         }
         catch (Exception ex)
         {
-            AddLog("Warn", $"Shader cache clear failed: {ex.Message}");
-            ShaderCacheStatusText = $"Clear failed: {ex.Message}";
+            AddLog("Warn", L.Format("LogShaderCacheClearFailed", ex.Message));
+            ShaderCacheStatusText = L.Format("ClearFailed", ex.Message);
             OnPropertyChanged(nameof(ShaderCacheSummaryText));
         }
         finally
@@ -873,7 +877,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async void RestoreShaderCache()
     {
-        if (!BeginShaderCacheOperation("Restoring cache..."))
+        if (!BeginShaderCacheOperation(L["RestoringCache"]))
         {
             return;
         }
@@ -887,13 +891,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 return (BackupPath: backupPath, Scan: BuildShaderCacheScanResult(starCitizenPath));
             });
 
-            AddLog("Info", $"Shader cache restored: {result.BackupPath}");
+            AddLog("Info", L.Format("LogShaderCacheRestored", result.BackupPath));
             ApplyShaderCacheScanResult(result.Scan);
         }
         catch (Exception ex)
         {
-            AddLog("Warn", $"Shader cache restore failed: {ex.Message}");
-            ShaderCacheStatusText = $"Restore failed: {ex.Message}";
+            AddLog("Warn", L.Format("LogShaderCacheRestoreFailed", ex.Message));
+            ShaderCacheStatusText = L.Format("RestoreFailed", ex.Message);
             OnPropertyChanged(nameof(ShaderCacheSummaryText));
         }
         finally
@@ -951,13 +955,20 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private void ApplyShaderCacheScanResult(ShaderCacheScanResult result)
     {
         Replace(ShaderCacheTargets, result.Targets);
-        ShaderCacheStatusText = result.Targets.Count == 0
-            ? "Not found"
-            : $"Ready · {FormatBytes(result.TotalBytes)}";
-        ShaderCacheLastBackupText = result.LatestBackupPath is null
-            ? "No backup"
-            : $"Latest manual backup: {Path.GetFileName(result.LatestBackupPath)}";
+        _shaderCacheLastTotalBytes = result.TotalBytes;
+        _shaderCacheLatestBackupPath = result.LatestBackupPath;
+        UpdateShaderCacheDisplayText();
         OnPropertyChanged(nameof(ShaderCacheSummaryText));
+    }
+
+    private void UpdateShaderCacheDisplayText()
+    {
+        ShaderCacheStatusText = ShaderCacheTargets.Count == 0
+            ? L["NotFound"]
+            : L.Format("ReadyWithSize", FormatBytes(_shaderCacheLastTotalBytes));
+        ShaderCacheLastBackupText = _shaderCacheLatestBackupPath is null
+            ? L["NoBackup"]
+            : L.Format("LatestManualBackup", Path.GetFileName(_shaderCacheLatestBackupPath));
     }
 
     private void RunMemoryOptimization()
@@ -1058,67 +1069,82 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         if (_lastSnapshot is null)
         {
-            return "Waiting for sensor data";
+            return L["WaitingForSensorData"];
         }
 
         if (CpuUsagePercent >= 90 || RamUsagePercent >= 90 || VramUsagePercent >= 90)
         {
-            return "High pressure";
+            return L["HighPressure"];
         }
 
         if (CpuUsagePercent >= 75 || RamUsagePercent >= 75 || VramUsagePercent >= 75)
         {
-            return "Watch";
+            return L["Watch"];
         }
 
-        return "Stable";
+        return L["Stable"];
     }
 
     private string BuildHardwarePressureText()
     {
         if (_lastSnapshot is null)
         {
-            return "CPU/RAM/GPU data is initializing.";
+            return L["HardwareDataInitializing"];
         }
 
-        return $"CPU {CpuUsageText} · RAM {RamUsageText} · GPU {GpuUsageText} · VRAM {VramUsageText}";
+        return L.Format("HardwarePressureSummary", CpuUsageText, RamUsageText, GpuUsageText, VramUsageText);
     }
 
     private string BuildHardwareInsightText()
     {
         if (_lastSnapshot is null)
         {
-            return "ANEVRED is collecting a baseline. Trends appear after a few seconds.";
+            return L["HardwareCollectingBaseline"];
         }
 
         if (RamUsagePercent >= Settings.RamThresholdPercent)
         {
-            return "RAM pressure is above your auto-optimization threshold. Consider closing heavy background apps or running Free RAM.";
+            return L["HardwareHighRamInsight"];
         }
 
         if (CpuUsagePercent >= Settings.CpuThresholdPercent)
         {
-            return "CPU pressure is above your profile threshold. Ease CPU can lower background load.";
+            return L["HardwareHighCpuInsight"];
         }
 
         if (_lastSnapshot.IsGpuDataAvailable && VramUsagePercent >= 85)
         {
-            return "VRAM pressure is high. Lower texture cache or restart the game if stutter appears.";
+            return L["HardwareHighVramInsight"];
         }
 
         if (_lastSnapshot.AverageFrametimeMs > 22)
         {
-            return "Frame pacing looks uneven. Check overlays, browser tabs, shader cache and background capture tools.";
+            return L["HardwareFrametimeInsight"];
         }
 
-        return "No critical hardware pressure detected. System looks ready for gaming.";
+        return L["HardwareStableInsight"];
     }
 
-    private string BuildHardwareDetailCpuText() => $"Load {CpuUsageText}\nTemp {CpuTemperatureText}\nCores {Cores.Count}\nThreshold {Settings.CpuThresholdPercent:0}%";
+    private string BuildHardwareDetailCpuText() => L.Format(
+        "HardwareCpuDetails",
+        CpuUsageText,
+        CpuTemperatureText,
+        Cores.Count,
+        Settings.CpuThresholdPercent);
 
-    private string BuildHardwareDetailGpuText() => $"Load {GpuUsageText}\nVRAM {VramGbText}\nTemp {GpuTemperatureText}\nFrametime {FrametimeText}";
+    private string BuildHardwareDetailGpuText() => L.Format(
+        "HardwareGpuDetails",
+        GpuUsageText,
+        VramGbText,
+        GpuTemperatureText,
+        FrametimeText);
 
-    private string BuildHardwareDetailMemoryText() => $"RAM {RamGbText}\nPagefile {PagefileGbText}\nRAM threshold {Settings.RamThresholdPercent:0}%\nRefresh {Settings.ProcessRefreshSeconds}s";
+    private string BuildHardwareDetailMemoryText() => L.Format(
+        "HardwareMemoryDetails",
+        RamGbText,
+        PagefileGbText,
+        Settings.RamThresholdPercent,
+        Settings.ProcessRefreshSeconds);
 
     private static long GetDirectorySizeSafe(string path)
     {
@@ -1429,6 +1455,21 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(AutoCpuIntervalText));
         OnPropertyChanged(nameof(StarCitizenLogPathText));
         OnPropertyChanged(nameof(StarCitizenPathWarningText));
+        OnPropertyChanged(nameof(StarCitizenSessionHealthText));
+        OnPropertyChanged(nameof(StarCitizenRecentProblemText));
+        OnPropertyChanged(nameof(StarCitizenAutoDetectionText));
+        OnPropertyChanged(nameof(HardwareHealthText));
+        OnPropertyChanged(nameof(HardwarePressureText));
+        OnPropertyChanged(nameof(HardwareInsightText));
+        OnPropertyChanged(nameof(HardwareDetailCpuText));
+        OnPropertyChanged(nameof(HardwareDetailGpuText));
+        OnPropertyChanged(nameof(HardwareDetailMemoryText));
+        OnPropertyChanged(nameof(ShaderCacheSummaryText));
+        OnPropertyChanged(nameof(ShaderCacheClearHintText));
+        if (!_isShaderCacheBusy)
+        {
+            UpdateShaderCacheDisplayText();
+        }
     }
 
     private void RefreshDataStorage()
@@ -2472,16 +2513,25 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         var completed = StarCitizenSessions.ToList();
         if (completed.Count == 0 && _starCitizenSessionStarted is null)
         {
-            return "No tracked Star Citizen sessions yet.";
+            return L["NoTrackedStarCitizenSessions"];
         }
 
         var problematic = completed.Count(IsProblematicStarCitizenSession);
         var healthy = completed.Count - problematic;
         var stutters = completed.Sum(session => session.AutoStutterCount) + (_starCitizenSessionStarted is null ? 0 : _starCitizenAutoStutterCount);
         var pressure = completed.Sum(session => session.PressureSpikeCount) + (_starCitizenSessionStarted is null ? 0 : _starCitizenPressureSpikeCount);
-        var active = _starCitizenSessionStarted is null ? "inactive" : $"active {SessionTimeText}";
+        var active = _starCitizenSessionStarted is null
+            ? L["Inactive"]
+            : L.Format("ActiveSessionDuration", SessionTimeText);
 
-        return $"Tracked: {completed.Count} completed · {active} · healthy {healthy} · issues {problematic} · stutter {stutters} · pressure {pressure}";
+        return L.Format(
+            "StarCitizenSessionHealth",
+            completed.Count,
+            active,
+            healthy,
+            problematic,
+            stutters,
+            pressure);
     }
 
     private string BuildStarCitizenRecentProblemText()
@@ -2491,25 +2541,35 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         if (problem is null)
         {
             return recent.Count == 0
-                ? "Session history will appear after Star Citizen closes."
-                : $"Last {recent.Count} stored sessions: no crash pattern detected.";
+                ? L["SessionHistoryAfterClose"]
+                : L.Format("RecentSessionsNoCrash", recent.Count);
         }
 
-        return $"Latest issue: {problem.StartedText} · {problem.ExitDisplaySummary}";
+        return L.Format("LatestSessionIssue", problem.StartedText, problem.ExitDisplaySummary);
     }
 
     private string BuildStarCitizenAutoDetectionText()
     {
         if (_starCitizenSessionStarted is null)
         {
-            return "Automatic stutter detection is armed. It starts when Star Citizen is detected.";
+            return L["AutoDetectionArmed"];
         }
 
-        var frametime = _lastSnapshot is null ? "n/a" : $"{_lastSnapshot.AverageFrametimeMs:0.0} ms";
-        var rolling = _starCitizenFrametimeWindow.Count == 0 ? "n/a" : $"{_starCitizenFrametimeWindow.Average():0.0} ms avg";
-        var ram = _lastSnapshot is null ? "n/a" : $"{_lastSnapshot.RamUsagePercent:0}%";
-        var vram = _lastSnapshot is null || !_lastSnapshot.IsGpuDataAvailable ? "n/a" : $"{_lastSnapshot.VramUsagePercent:0}%";
-        return $"Auto detection: stutter {_starCitizenAutoStutterCount} · pressure {_starCitizenPressureSpikeCount} · frametime {frametime} ({rolling}) · RAM {ram} · VRAM {vram}";
+        var unavailable = L["NotAvailableShort"];
+        var frametime = _lastSnapshot is null ? unavailable : $"{_lastSnapshot.AverageFrametimeMs:0.0} ms";
+        var rolling = _starCitizenFrametimeWindow.Count == 0
+            ? unavailable
+            : L.Format("AverageMilliseconds", _starCitizenFrametimeWindow.Average());
+        var ram = _lastSnapshot is null ? unavailable : $"{_lastSnapshot.RamUsagePercent:0}%";
+        var vram = _lastSnapshot is null || !_lastSnapshot.IsGpuDataAvailable ? unavailable : $"{_lastSnapshot.VramUsagePercent:0}%";
+        return L.Format(
+            "AutoDetectionStatus",
+            _starCitizenAutoStutterCount,
+            _starCitizenPressureSpikeCount,
+            frametime,
+            rolling,
+            ram,
+            vram);
     }
 
     private static bool IsProblematicStarCitizenSession(StarCitizenSessionView session)
