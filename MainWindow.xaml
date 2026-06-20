@@ -643,17 +643,17 @@
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Text="{Binding PeakSummary}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
                                                         <TextBlock Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0">
-                                                            <Run Text="{Binding DataContext.L[AutoStutterLabel], RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                            <Run Text="{Binding DataContext.L[AutoStutterLabel], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
                                                             <Run Text="{Binding AutoStutterCount, StringFormat={}{0}}"/>
                                                             <Run Text=" · "/>
-                                                            <Run Text="{Binding DataContext.L[PressureLabel], RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                            <Run Text="{Binding DataContext.L[PressureLabel], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
                                                             <Run Text="{Binding PressureSpikeCount, StringFormat={}{0}}"/>
                                                             <Run Text=" · "/>
-                                                            <Run Text="{Binding DataContext.L[ManualLabel], RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                            <Run Text="{Binding DataContext.L[ManualLabel], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
                                                             <Run Text="{Binding ManualEventCount, StringFormat={}{0}}"/>
                                                         </TextBlock>
                                                         <TextBlock Text="{Binding ExitDisplaySummary}" Foreground="{DynamicResource CpuAccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                                        <Expander Header="{Binding DataContext.L[SessionLogDetails], RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,4,0,0">
+                                                        <Expander Header="{Binding DataContext.L[SessionLogDetails], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Margin="0,4,0,0">
                                                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                                                 <TextBlock Text="{Binding LogEvidenceSummary}" Foreground="{DynamicResource DisabledTextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,4,8,0"/>
                                                             </ScrollViewer>
@@ -842,7 +842,7 @@
                                                            TextWrapping="Wrap"
                                                            TextTrimming="None"
                                                            Foreground="{DynamicResource PrimaryTextBrush}"/>
-                                                <Expander Header="{Binding DataContext.L[SessionLogDetails], RelativeSource={RelativeSource AncestorType=Window}}"
+                                                <Expander Header="{Binding DataContext.L[SessionLogDetails], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"
                                                           Margin="0,4,0,0"
                                                           Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibilityConverter}}">
                                                     <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -1252,11 +1252,11 @@
                             </Grid>
                             <DataGrid Grid.Row="2" ItemsSource="{Binding DataStorageItems}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="{Binding DataContext.L[Name], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Name}" Width="2*"/>
-                                    <DataGridTextColumn Header="{Binding DataContext.L[Type], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Kind}" Width="130"/>
-                                    <DataGridTextColumn Header="{Binding DataContext.L[Size], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding SizeText}" Width="100"/>
-                                    <DataGridTextColumn Header="{Binding DataContext.L[Changed], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding LastModifiedText}" Width="140"/>
-                                    <DataGridTextColumn Header="{Binding DataContext.L[Path], RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Path}" Width="2*"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Name], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Binding="{Binding Name}" Width="2*"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Type], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Binding="{Binding Kind}" Width="130"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Size], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Binding="{Binding SizeText}" Width="100"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Changed], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Binding="{Binding LastModifiedText}" Width="140"/>
+                                    <DataGridTextColumn Header="{Binding DataContext.L[Path], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}" Binding="{Binding Path}" Width="2*"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                             <WrapPanel Grid.Row="3" Margin="0,12,0,0">
