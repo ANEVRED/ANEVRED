@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:ANEVRED.Controls"
+        xmlns:models="clr-namespace:ANEVRED.Models"
         mc:Ignorable="d"
         Title="ANEVRED Optimizer" Icon="Assets/AppIcon.ico" Height="820" Width="1440" MinHeight="700" MinWidth="1180" WindowState="Maximized">
     <Grid Background="{DynamicResource WindowBackgroundBrush}">
@@ -821,6 +822,387 @@
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
+
+            <Grid Visibility="{Binding IsMacrosView, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Margin="0,0,0,12">
+                    <TextBlock Text="{Binding L[MacroManager]}" FontSize="24" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding L[MacroManagerHint]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,10,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{Binding L[Macros]}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding Macros}" SelectedItem="{Binding SelectedMacro, Mode=TwoWay}" BorderThickness="0" Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="2,4" Width="230">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding Converter="{StaticResource MacroHotkeyDisplayConverter}">
+                                                            <Binding Path="Hotkey"/>
+                                                            <Binding Path="DataContext.L.CurrentLanguage" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding DataContext.L[MacroStateRunning], RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           Foreground="{DynamicResource AccentBrush}" FontSize="11"
+                                                           Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                <TextBlock Text="{Binding DataContext.L[MacroStateError], RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           Foreground="{DynamicResource CpuAccentBrush}" FontSize="11"
+                                                           Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                <TextBlock Text="{Binding DataContext.L[MacroStateStopped], RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding DataContext.L[MacroHotkeyNotSet], RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                                           FontSize="12">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasHotkey}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" IsChecked="{Binding Enabled, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <Grid Grid.Row="2" Margin="0,10,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.ColumnSpan="2" Content="{Binding L[AddMacro]}" Click="AddMacroButtonClick" Margin="0,0,0,6"/>
+                                <Button Grid.Row="1" Content="{Binding L[DuplicateMacro]}" Command="{Binding DuplicateMacroCommand}" Margin="0,0,3,0"/>
+                                <Button Grid.Row="1" Grid.Column="1" Content="{Binding L[RemoveMacro]}" Command="{Binding RemoveMacroCommand}" Margin="3,0,0,0"/>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource PanelCardStyle}" Visibility="{Binding HasSelectedMacro, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="190"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="120"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding L[MacroName]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding SelectedMacro.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding L[ExecutionMode]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                        <ComboBox ItemsSource="{Binding MacroExecutionModes}"
+                                                  SelectedValue="{Binding SelectedMacro.ExecutionMode, Mode=TwoWay}"
+                                                  SelectedValuePath="Value"
+                                                  DisplayMemberPath="DisplayName"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding L[RepeatCount]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding SelectedMacro.RepeatCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding SelectedMacro.UsesRepeatCount}"/>
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="3" Content="{Binding L[MacroEnabled]}" IsChecked="{Binding SelectedMacro.Enabled, Mode=TwoWay}" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
+                                </Grid>
+                                <StackPanel Margin="0,10,0,0">
+                                    <TextBlock Text="{Binding L[MacroDescription]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding SelectedMacro.Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="48" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <Border Grid.Row="1" Margin="0,12,0,12" Padding="12,10"
+                                    Background="{DynamicResource PanelAltBackgroundBrush}"
+                                    BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="1" CornerRadius="7">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="100"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding L[ActivationHotkey]}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding L[ActivationHotkeyHint]}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" Margin="0,2,0,5"/>
+                                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource MacroHotkeyDisplayConverter}">
+                                                    <Binding Path="SelectedMacro.Hotkey"/>
+                                                    <Binding Path="L.CurrentLanguage"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding L[MacroHotkeyNotSet]}" Foreground="{DynamicResource SecondaryTextBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedMacro.HasHotkey}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Button x:Name="MacroHotkeyCaptureButton" Grid.Column="1"
+                                            Content="{Binding L[ChooseMacroStartKey]}" Tag="MacroActivation"
+                                            Click="CaptureHotkeyButtonClick" Margin="12,0,0,0"/>
+                                    <Button Grid.Column="2" Content="{Binding L[RemoveHotkey]}"
+                                            Command="{Binding ClearMacroHotkeyCommand}" Margin="8,0,0,0"/>
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding MacroStatusText}"
+                                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                                               Margin="0,8,0,0"
+                                               Visibility="{Binding IsMacroHotkeyCaptureActive, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </Grid>
+                            </Border>
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="330"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid Margin="0,0,14,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding L[MacroSequence]}" FontSize="16" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding L[ChooseActionToAdd]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,2,0,8"/>
+                                        <WrapPanel>
+                                            <Button Content="{Binding L[AddKeyStep]}" Command="{Binding AddMacroKeyStepCommand}" Margin="0,0,6,6"/>
+                                            <Button Content="{Binding L[AddDelayStep]}" Command="{Binding AddMacroDelayStepCommand}" Margin="0,0,6,6"/>
+                                            <Button Content="{Binding L[AddMouseClickStep]}" Command="{Binding AddMacroMouseClickStepCommand}" Margin="0,0,6,6"/>
+                                            <Button Content="{Binding L[AddMouseMoveStep]}" Command="{Binding AddMacroMouseMoveStepCommand}" Margin="0,0,6,6"/>
+                                            <Button Content="{Binding L[AddMouseWheelStep]}" Command="{Binding AddMacroMouseWheelStepCommand}" Margin="0,0,6,6"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <Grid Grid.Row="1" Margin="0,6,0,0">
+                                        <ListBox ItemsSource="{Binding SelectedMacro.Steps}"
+                                                 SelectedItem="{Binding SelectedMacroStep, Mode=TwoWay}"
+                                                 BorderThickness="1"
+                                                 Background="Transparent">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="8,6" MinHeight="38">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="150"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding DataContext.L[MacroStepKeyPress], RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="SemiBold" VerticalAlignment="Center" Visibility="{Binding IsKeyPress, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <TextBlock Grid.Column="0" Text="{Binding DataContext.L[MacroStepDelayAction], RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="SemiBold" VerticalAlignment="Center" Visibility="{Binding IsDelay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <TextBlock Grid.Column="0" Text="{Binding DataContext.L[MacroStepMouseClick], RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="SemiBold" VerticalAlignment="Center" Visibility="{Binding IsMouseClick, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <TextBlock Grid.Column="0" Text="{Binding DataContext.L[MacroStepMouseMove], RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="SemiBold" VerticalAlignment="Center" Visibility="{Binding IsMouseMove, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <TextBlock Grid.Column="0" Text="{Binding DataContext.L[MacroStepMouseWheel], RelativeSource={RelativeSource AncestorType=Window}}" FontWeight="SemiBold" VerticalAlignment="Center" Visibility="{Binding IsMouseWheel, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Key}" Visibility="{Binding IsKeyPress, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            <TextBlock Text="{Binding DataContext.L[MacroHotkeyNotSet], RelativeSource={RelativeSource AncestorType=Window}}" Foreground="{DynamicResource SecondaryTextBrush}">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        <Style.Triggers>
+                                                                            <MultiDataTrigger>
+                                                                                <MultiDataTrigger.Conditions>
+                                                                                    <Condition Binding="{Binding IsKeyPress}" Value="True"/>
+                                                                                    <Condition Binding="{Binding HasKey}" Value="False"/>
+                                                                                </MultiDataTrigger.Conditions>
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                            </MultiDataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                            <TextBlock Text="{Binding DelayMs, StringFormat={}{0} ms}" Visibility="{Binding IsDelay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            <TextBlock Text="{Binding MouseButton}" Visibility="{Binding IsMouseClick, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            <TextBlock Visibility="{Binding IsMouseMove, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                <Run Text="X "/><Run Text="{Binding MouseX}"/><Run Text="   Y "/><Run Text="{Binding MouseY}"/>
+                                                            </TextBlock>
+                                                            <TextBlock Visibility="{Binding IsWheelUp, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                <Run Text="{Binding DataContext.L[MouseWheelUp], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
+                                                                <Run Text=" · "/><Run Text="{Binding WheelSteps}"/><Run Text="×"/>
+                                                            </TextBlock>
+                                                            <TextBlock Visibility="{Binding IsWheelDown, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                <Run Text="{Binding DataContext.L[MouseWheelDown], RelativeSource={RelativeSource AncestorType=Window}, Mode=OneWay}"/>
+                                                                <Run Text=" · "/><Run Text="{Binding WheelSteps}"/><Run Text="×"/>
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <TextBlock Text="{Binding L[MacroNoSteps]}"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   MaxWidth="360"
+                                                   IsHitTestVisible="False">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedMacro.Steps.Count}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Grid>
+                                <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="1,0,0,0" Padding="14,0,0,0">
+                                    <Grid>
+                                        <TextBlock Text="{Binding L[SelectMacroStepHint]}"
+                                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   MaxWidth="250">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasSelectedMacroStep}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <StackPanel Visibility="{Binding HasSelectedMacroStep, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding L[EditSelectedAction]}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                            <TextBlock Text="{Binding L[MacroStepType]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                            <ComboBox ItemsSource="{Binding MacroStepTypes}"
+                                                      SelectedValue="{Binding SelectedMacroStep.Type, Mode=TwoWay}"
+                                                      SelectedValuePath="Value"
+                                                      DisplayMemberPath="DisplayName"
+                                                      Margin="0,0,0,14"/>
+                                            <StackPanel Visibility="{Binding SelectedMacroStep.IsKeyPress, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding L[MacroStepKey]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding SelectedMacroStep.Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                                                <Button Content="{Binding L[CaptureStepKey]}" Tag="MacroStep" Click="CaptureHotkeyButtonClick" HorizontalAlignment="Left"/>
+                                                <TextBlock Text="{Binding L[MacroKeyCaptureHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Visibility="{Binding SelectedMacroStep.IsDelay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding L[MacroStepDelay]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding SelectedMacroStep.DelayMs, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                                <TextBlock Text="{Binding L[MacroDelayHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Visibility="{Binding SelectedMacroStep.IsMouseClick, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding L[MacroMouseButton]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                                <ComboBox ItemsSource="{Binding MacroMouseButtons}"
+                                                          SelectedValue="{Binding SelectedMacroStep.MouseButton, Mode=TwoWay}"
+                                                          SelectedValuePath="Code"
+                                                          DisplayMemberPath="DisplayName"/>
+                                            </StackPanel>
+                                            <StackPanel Visibility="{Binding SelectedMacroStep.IsMouseMove, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding L[MacroMouseMoveHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="12"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding L[MacroStepMouseX]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                                        <TextBox Text="{Binding SelectedMacroStep.MouseX, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="{Binding L[MacroStepMouseY]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                                        <TextBox Text="{Binding SelectedMacroStep.MouseY, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                            <StackPanel Visibility="{Binding SelectedMacroStep.IsMouseWheel, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding L[MouseWheelDirection]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                                <ComboBox ItemsSource="{Binding MacroWheelDirections}"
+                                                          SelectedValue="{Binding SelectedMacroStep.WheelDirection, Mode=OneWay}"
+                                                          SelectedValuePath="Code"
+                                                          DisplayMemberPath="DisplayName"
+                                                          SelectionChanged="MacroWheelDirectionSelectionChanged"
+                                                          Margin="0,0,0,10"/>
+                                                <TextBlock Text="{Binding L[MouseWheelSteps]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,4"/>
+                                                <TextBox Text="{Binding SelectedMacroStep.WheelSteps, Mode=OneWay}"
+                                                         LostFocus="MacroWheelStepsLostFocus"/>
+                                                <TextBlock Text="{Binding L[MacroWheelHint]}" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                            <Grid Grid.Row="3" Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <WrapPanel>
+                                    <Button Content="{Binding L[RemoveStep]}" Command="{Binding RemoveMacroStepCommand}" Margin="0,0,6,0"/>
+                                    <Button Content="{Binding L[MoveUp]}" Command="{Binding MoveMacroStepUpCommand}" Margin="0,0,6,0"/>
+                                    <Button Content="{Binding L[MoveDown]}" Command="{Binding MoveMacroStepDownCommand}"/>
+                                </WrapPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <TextBlock Text="{Binding MacroStatusText}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <Button Content="{Binding L[SaveMacro]}" Command="{Binding SaveMacroCommand}" MinWidth="90" Margin="0,0,6,0"/>
+                                    <Button Content="{Binding L[RunMacro]}" Command="{Binding RunMacroCommand}" MinWidth="110" Margin="0,0,6,0"/>
+                                    <Button Content="{Binding L[StopMacro]}" Command="{Binding StopMacroCommand}" MinWidth="90"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
 
             <Grid Visibility="{Binding IsLogsView, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Border Style="{StaticResource PanelCardStyle}">

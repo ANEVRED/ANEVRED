@@ -21,6 +21,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         nameof(IsGamingView),
         nameof(IsStarCitizenView),
         nameof(IsHardwareView),
+        nameof(IsMacrosView),
         nameof(IsLogsView),
         nameof(IsSettingsView),
         nameof(IsInfoView)
@@ -52,6 +53,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly ShaderCacheService _shaderCacheService;
     private readonly LocalLearningService _learningService;
     private readonly DataStorageService _dataStorageService;
+    private readonly MacroExecutionService _macroExecutionService;
+    private readonly MacroStorage _macroStorage;
+    private readonly MacroValidator _macroValidator = new();
     private readonly DispatcherTimer _timer = new();
     private SystemSnapshot? _lastSnapshot;
     private bool _isRefreshing;
@@ -81,6 +85,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private long _shaderCacheLastTotalBytes;
     private string? _shaderCacheLatestBackupPath;
     private bool _isShaderCacheBusy;
+    private bool _isMacroHotkeyCaptureActive;
     private DateTime _lastAutoStutterDetected = DateTime.MinValue;
     private DateTime _lastAutoPressureDetected = DateTime.MinValue;
     private DateTime _lastAutoCpuPressureDetected = DateTime.MinValue;
@@ -93,6 +98,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private int _starCitizenPressureSpikeCount;
     private int _starCitizenManualEventCount;
     private string _selectedStarCitizenPage = "Overview";
+    private MacroDefinition? _selectedMacro;
+    private MacroStep? _selectedMacroStep;
+    private string _macroStatusText = string.Empty;
 
     public MainViewModel()
     {
@@ -100,6 +108,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         L = new LocalizationService(Settings.Language);
         _shaderCacheStatusText = L["NotScanned"];
         _shaderCacheLastBackupText = L["NoBackup"];
+        _macroStatusText = L["MacroReady"];
         var cleanedItems = new DataRetentionCleanupService(_settingsService.AppDataDirectory, Settings, message => AddLog("Info", message)).Cleanup();
         _protectionService = new ProcessProtectionService(Settings);
         _monitoringService = new MonitoringService(_protectionService);
@@ -107,6 +116,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _powerPlanService = new PowerPlanService(L, AddLog);
         _memoryCompressionService = new MemoryCompressionService(L, AddLog);
         _dataStorageService = new DataStorageService(_settingsService.AppDataDirectory, Settings, message => AddLog("Info", message));
+        _macroStorage = new MacroStorage(_settingsService.AppDataDirectory);
+        Macros = _macroStorage.Load(Settings.Macros);
+        _macroExecutionService = new MacroExecutionService(L, AddLog);
+        _macroExecutionService.ExecutionChanged += MacroExecutionChanged;
         _learningService = new LocalLearningService(Settings, L, _settingsService.AppDataDirectory);
         _starCitizenSessionHistoryService = new StarCitizenSessionHistoryService(_settingsService.AppDataDirectory, Settings);
         _shaderCacheService = new ShaderCacheService(_settingsService.AppDataDirectory, Settings);
@@ -141,6 +154,21 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         CleanupExpiredDataCommand = new RelayCommand(_ => CleanupExpiredData());
         DeleteWorkDataCommand = new RelayCommand(_ => DeleteWorkData(keepSettings: true));
         DeleteAllNonSettingsDataCommand = new RelayCommand(_ => DeleteWorkData(keepSettings: false));
+        AddMacroCommand = new RelayCommand(_ => AddMacro());
+        RemoveMacroCommand = new RelayCommand(_ => RemoveSelectedMacro(), _ => SelectedMacro is not null);
+        DuplicateMacroCommand = new RelayCommand(_ => DuplicateSelectedMacro(), _ => SelectedMacro is not null);
+        SaveMacroCommand = new RelayCommand(_ => SaveSelectedMacro(), _ => SelectedMacro is not null);
+        ClearMacroHotkeyCommand = new RelayCommand(_ => ClearSelectedMacroHotkey(), _ => SelectedMacro?.HasHotkey == true);
+        AddMacroKeyStepCommand = new RelayCommand(_ => AddMacroStep(MacroStepType.KeyPress), _ => SelectedMacro is not null);
+        AddMacroDelayStepCommand = new RelayCommand(_ => AddMacroStep(MacroStepType.Delay), _ => SelectedMacro is not null);
+        AddMacroMouseMoveStepCommand = new RelayCommand(_ => AddMacroStep(MacroStepType.MouseMove), _ => SelectedMacro is not null);
+        AddMacroMouseClickStepCommand = new RelayCommand(_ => AddMacroStep(MacroStepType.MouseClick), _ => SelectedMacro is not null);
+        AddMacroMouseWheelStepCommand = new RelayCommand(_ => AddMacroStep(MacroStepType.MouseWheel), _ => SelectedMacro is not null);
+        RemoveMacroStepCommand = new RelayCommand(_ => RemoveSelectedMacroStep(), _ => SelectedMacroStep is not null);
+        MoveMacroStepUpCommand = new RelayCommand(_ => MoveSelectedMacroStep(-1), _ => CanMoveSelectedMacroStep(-1));
+        MoveMacroStepDownCommand = new RelayCommand(_ => MoveSelectedMacroStep(1), _ => CanMoveSelectedMacroStep(1));
+        RunMacroCommand = new RelayCommand(async _ => await RunSelectedMacroAsync(), _ => SelectedMacro is { Enabled: true });
+        StopMacroCommand = new RelayCommand(_ => StopMacro(), _ => _macroExecutionService.IsRunning);
 
         Settings.PropertyChanged += SettingsChanged;
         Settings.ProtectionRules.CollectionChanged += ProtectionRulesChanged;
@@ -148,6 +176,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             rule.PropertyChanged += ProtectionRuleChanged;
         }
+        Macros.CollectionChanged += MacrosCollectionChanged;
+        foreach (var macro in Macros)
+        {
+            SubscribeMacro(macro);
+        }
+        SelectedMacro = Macros.FirstOrDefault();
 
         _timer.Interval = TimeSpan.FromSeconds(1);
         _timer.Tick += async (_, _) => await RefreshAsync();
@@ -168,6 +202,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public event EventHandler? ThemeChanged;
     public event Action<string, string>? NotificationRequested;
     public event Func<string, string, bool>? ConfirmationRequested;
+    public event EventHandler? MacroHotkeysChanged;
 
     public AppSettings Settings { get; }
     public LocalizationService L { get; }
@@ -188,6 +223,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public ObservableCollection<FeatureToggleViewModel> FeatureToggles { get; } = [];
     public ObservableCollection<ShaderCacheTargetView> ShaderCacheTargets { get; } = [];
     public ObservableCollection<DataStorageItem> DataStorageItems { get; } = [];
+    public ObservableCollection<MacroDefinition> Macros { get; }
 
     public IReadOnlyList<LanguageOption> SupportedLanguages { get; } =
     [
@@ -199,6 +235,34 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public IReadOnlyList<int> HistoryWindows { get; } = [5, 15, 60];
     public IReadOnlyList<AppProfile> Profiles { get; } = Enum.GetValues<AppProfile>();
     public IReadOnlyList<string> Themes { get; } = ["Dark", "Light"];
+    public IReadOnlyList<MacroStepTypeOption> MacroStepTypes =>
+    [
+        new(MacroStepType.KeyPress, L["MacroStepKeyPress"]),
+        new(MacroStepType.Delay, L["MacroStepDelayAction"]),
+        new(MacroStepType.MouseClick, L["MacroStepMouseClick"]),
+        new(MacroStepType.MouseMove, L["MacroStepMouseMove"]),
+        new(MacroStepType.MouseWheel, L["MacroStepMouseWheel"])
+    ];
+    public IReadOnlyList<MacroExecutionModeOption> MacroExecutionModes =>
+    [
+        new(MacroExecutionMode.Once, L["MacroModeOnce"]),
+        new(MacroExecutionMode.Repeat, L["MacroModeRepeat"]),
+        new(MacroExecutionMode.Toggle, L["MacroModeToggle"]),
+        new(MacroExecutionMode.Hold, L["MacroModeHold"])
+    ];
+    public IReadOnlyList<LanguageOption> MacroMouseButtons =>
+    [
+        new("Left", L["MouseButtonLeft"]),
+        new("Right", L["MouseButtonRight"]),
+        new("Middle", L["MouseButtonMiddle"]),
+        new("X1", L["MouseButton4"]),
+        new("X2", L["MouseButton5"])
+    ];
+    public IReadOnlyList<LanguageOption> MacroWheelDirections =>
+    [
+        new("Up", L["MouseWheelUp"]),
+        new("Down", L["MouseWheelDown"])
+    ];
     public IReadOnlyList<LanguageOption> DataRetentionOptions
     {
         get
@@ -265,6 +329,63 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public RelayCommand CleanupExpiredDataCommand { get; }
     public RelayCommand DeleteWorkDataCommand { get; }
     public RelayCommand DeleteAllNonSettingsDataCommand { get; }
+    public RelayCommand AddMacroCommand { get; }
+    public RelayCommand RemoveMacroCommand { get; }
+    public RelayCommand DuplicateMacroCommand { get; }
+    public RelayCommand SaveMacroCommand { get; }
+    public RelayCommand ClearMacroHotkeyCommand { get; }
+    public RelayCommand AddMacroKeyStepCommand { get; }
+    public RelayCommand AddMacroDelayStepCommand { get; }
+    public RelayCommand AddMacroMouseMoveStepCommand { get; }
+    public RelayCommand AddMacroMouseClickStepCommand { get; }
+    public RelayCommand AddMacroMouseWheelStepCommand { get; }
+    public RelayCommand RemoveMacroStepCommand { get; }
+    public RelayCommand MoveMacroStepUpCommand { get; }
+    public RelayCommand MoveMacroStepDownCommand { get; }
+    public RelayCommand RunMacroCommand { get; }
+    public RelayCommand StopMacroCommand { get; }
+
+    public MacroDefinition? SelectedMacro
+    {
+        get => _selectedMacro;
+        set
+        {
+            if (SetField(ref _selectedMacro, value))
+            {
+                SelectedMacroStep = value?.Steps.FirstOrDefault();
+                OnPropertyChanged(nameof(HasSelectedMacro));
+                RaiseMacroCommandStates();
+            }
+        }
+    }
+
+    public MacroStep? SelectedMacroStep
+    {
+        get => _selectedMacroStep;
+        set
+        {
+            if (SetField(ref _selectedMacroStep, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedMacroStep));
+                RaiseMacroCommandStates();
+            }
+        }
+    }
+
+    public bool HasSelectedMacro => SelectedMacro is not null;
+    public bool HasSelectedMacroStep => SelectedMacroStep is not null;
+    public bool IsMacroRunning => _macroExecutionService.IsRunning;
+    public bool IsMacroHotkeyCaptureActive
+    {
+        get => _isMacroHotkeyCaptureActive;
+        private set => SetField(ref _isMacroHotkeyCaptureActive, value);
+    }
+
+    public string MacroStatusText
+    {
+        get => _macroStatusText;
+        private set => SetField(ref _macroStatusText, value);
+    }
 
     public double RamUsagePercent => _lastSnapshot?.RamUsagePercent ?? 0;
     public double CpuUsagePercent => _lastSnapshot?.CpuUsagePercent ?? 0;
@@ -428,6 +549,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public bool IsGamingView => CurrentView == "Gaming";
     public bool IsStarCitizenView => CurrentView == "StarCitizen";
     public bool IsHardwareView => CurrentView == "Hardware";
+    public bool IsMacrosView => CurrentView == "Macros";
     public bool IsLogsView => CurrentView == "Logs";
     public bool IsSettingsView => CurrentView == "Settings";
     public bool IsInfoView => CurrentView == "Info";
@@ -651,6 +773,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _timer.Stop();
+        SaveValidMacros();
+        _macroExecutionService.ExecutionChanged -= MacroExecutionChanged;
+        _macroExecutionService.Dispose();
+        Macros.CollectionChanged -= MacrosCollectionChanged;
+        foreach (var macro in Macros)
+        {
+            UnsubscribeMacro(macro);
+        }
         _optimizationService.ResetChangedPriorities();
         _monitoringService.Dispose();
         _learningService.Flush();
@@ -1447,6 +1577,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(DataRetentionSummaryText));
         OnPropertyChanged(nameof(DataRetentionHintText));
         OnPropertyChanged(nameof(DataStorageSummaryText));
+        OnPropertyChanged(nameof(MacroStepTypes));
+        OnPropertyChanged(nameof(MacroExecutionModes));
+        OnPropertyChanged(nameof(MacroMouseButtons));
+        OnPropertyChanged(nameof(MacroWheelDirections));
+        if (!_macroExecutionService.IsRunning)
+        {
+            MacroStatusText = L["MacroReady"];
+        }
         OnPropertyChanged(nameof(AutoOptimizationStatusText));
         OnPropertyChanged(nameof(LocalLearningStatusText));
         OnPropertyChanged(nameof(PrivacyStatusText));
@@ -1470,6 +1608,408 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             UpdateShaderCacheDisplayText();
         }
+    }
+
+    private void AddMacro()
+    {
+        var macro = new MacroDefinition
+        {
+            Name = L.Format("NewMacroName", Macros.Count + 1),
+            Hotkey = string.Empty
+        };
+        Macros.Add(macro);
+        SelectedMacro = macro;
+    }
+
+    private void RemoveSelectedMacro()
+    {
+        var macro = SelectedMacro;
+        if (macro is null
+            || ConfirmationRequested?.Invoke(
+                L["DeleteMacroConfirmTitle"],
+                L.Format("DeleteMacroConfirmText", macro.Name)) != true)
+        {
+            return;
+        }
+
+        _macroExecutionService.Stop(macro.Id);
+        var index = Macros.IndexOf(macro);
+        Macros.Remove(macro);
+        SelectedMacro = Macros.Count == 0
+            ? null
+            : Macros[Math.Clamp(index, 0, Macros.Count - 1)];
+        SaveValidMacros();
+    }
+
+    private void DuplicateSelectedMacro()
+    {
+        if (SelectedMacro is null)
+        {
+            return;
+        }
+
+        var clone = SelectedMacro.Clone();
+        clone.Name = L.Format("MacroCopyName", SelectedMacro.Name);
+        Macros.Add(clone);
+        SelectedMacro = clone;
+        MacroStatusText = L["MacroDuplicated"];
+    }
+
+    private void SaveSelectedMacro()
+    {
+        if (SelectedMacro is null)
+        {
+            return;
+        }
+
+        var validation = ValidateMacro(SelectedMacro);
+        if (!validation.IsValid)
+        {
+            SelectedMacro.RunState = MacroRunState.Error;
+            SelectedMacro.LastError = string.Join(Environment.NewLine, validation.Errors);
+            MacroStatusText = validation.Errors[0];
+            return;
+        }
+
+        SelectedMacro.Hotkey = HotkeyParser.Normalize(SelectedMacro.Hotkey);
+        SelectedMacro.LastError = string.Empty;
+        if (SelectedMacro.RunState == MacroRunState.Error)
+        {
+            SelectedMacro.RunState = MacroRunState.Stopped;
+        }
+
+        _macroStorage.Save(Macros);
+        MacroStatusText = L["MacroSaved"];
+        MacroHotkeysChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ClearSelectedMacroHotkey()
+    {
+        if (SelectedMacro is null)
+        {
+            return;
+        }
+
+        SelectedMacro.Hotkey = string.Empty;
+        MacroStatusText = L["MacroHotkeyRemoved"];
+        SaveValidMacros();
+    }
+
+    private void AddMacroStep(MacroStepType type)
+    {
+        if (SelectedMacro is null || SelectedMacro.Steps.Count >= 100)
+        {
+            return;
+        }
+
+        var step = type switch
+        {
+            MacroStepType.Delay => new MacroStep { Type = type, DelayMs = 100 },
+            MacroStepType.MouseClick => new MacroStep { Type = type, MouseButton = "Left" },
+            MacroStepType.MouseWheel => new MacroStep { Type = type, WheelDelta = 120 },
+            _ => new MacroStep { Type = type }
+        };
+        SelectedMacro.Steps.Add(step);
+        SelectedMacroStep = step;
+        MacroStatusText = L.Format("MacroStepAdded", GetMacroStepTypeName(type));
+    }
+
+    private void RemoveSelectedMacroStep()
+    {
+        if (SelectedMacro is null || SelectedMacroStep is null)
+        {
+            return;
+        }
+
+        var index = SelectedMacro.Steps.IndexOf(SelectedMacroStep);
+        SelectedMacro.Steps.Remove(SelectedMacroStep);
+        SelectedMacroStep = SelectedMacro.Steps.Count == 0
+            ? null
+            : SelectedMacro.Steps[Math.Clamp(index, 0, SelectedMacro.Steps.Count - 1)];
+        MacroStatusText = L["MacroStepRemoved"];
+    }
+
+    private bool CanMoveSelectedMacroStep(int offset)
+    {
+        if (SelectedMacro is null || SelectedMacroStep is null)
+        {
+            return false;
+        }
+
+        var index = SelectedMacro.Steps.IndexOf(SelectedMacroStep);
+        var target = index + offset;
+        return index >= 0 && target >= 0 && target < SelectedMacro.Steps.Count;
+    }
+
+    private void MoveSelectedMacroStep(int offset)
+    {
+        if (!CanMoveSelectedMacroStep(offset) || SelectedMacro is null || SelectedMacroStep is null)
+        {
+            return;
+        }
+
+        var index = SelectedMacro.Steps.IndexOf(SelectedMacroStep);
+        SelectedMacro.Steps.Move(index, index + offset);
+        MacroStatusText = offset < 0 ? L["MacroStepMovedUp"] : L["MacroStepMovedDown"];
+        RaiseMacroCommandStates();
+    }
+
+    private async Task RunSelectedMacroAsync()
+    {
+        if (SelectedMacro is null)
+        {
+            return;
+        }
+
+        await RunMacroAsync(SelectedMacro.Id);
+    }
+
+    public async Task RunMacroAsync(Guid macroId)
+    {
+        var macro = Macros.FirstOrDefault(item => item.Id == macroId);
+        if (macro is null || !macro.Enabled)
+        {
+            return;
+        }
+
+        var validation = ValidateMacro(macro);
+        if (!validation.IsValid)
+        {
+            macro.RunState = MacroRunState.Error;
+            macro.LastError = string.Join(Environment.NewLine, validation.Errors);
+            MacroStatusText = validation.Errors[0];
+            return;
+        }
+
+        if (macro.ExecutionMode == MacroExecutionMode.Toggle && _macroExecutionService.IsRunningMacro(macro.Id))
+        {
+            _macroExecutionService.Stop(macro.Id);
+            return;
+        }
+
+        MacroStatusText = L.Format("MacroRunning", macro.Name);
+        await _macroExecutionService.StartAsync(macro);
+    }
+
+    private void StopMacro()
+    {
+        if (SelectedMacro is not null)
+        {
+            _macroExecutionService.Stop(SelectedMacro.Id);
+        }
+        else
+        {
+            _macroExecutionService.StopAll();
+        }
+        MacroStatusText = L["MacroStopping"];
+        RaiseMacroCommandStates();
+    }
+
+    public void ReleaseMacroHotkey(Guid macroId)
+    {
+        var macro = Macros.FirstOrDefault(item => item.Id == macroId);
+        if (macro?.ExecutionMode == MacroExecutionMode.Hold)
+        {
+            _macroExecutionService.Stop(macroId);
+        }
+    }
+
+    public void SetMacroHotkey(Guid macroId, string hotkey)
+    {
+        var macro = Macros.FirstOrDefault(item => item.Id == macroId);
+        if (macro is null)
+        {
+            return;
+        }
+
+        macro.Hotkey = HotkeyParser.Normalize(hotkey);
+        SelectedMacro = macro;
+    }
+
+    public void SetSelectedMacroStepKey(string key)
+    {
+        if (SelectedMacroStep is not { Type: MacroStepType.KeyPress })
+        {
+            return;
+        }
+
+        SelectedMacroStep.Key = key;
+        MacroStatusText = L.Format("MacroStepKeySet", key);
+    }
+
+    public void SetMacroCaptureState(bool active, string message)
+    {
+        IsMacroHotkeyCaptureActive = active;
+        MacroStatusText = message;
+    }
+
+    public void SetMacroHotkeyRegistrationResult(string hotkey, bool registered)
+    {
+        MacroStatusText = registered
+            ? L.Format("MacroHotkeySet", hotkey)
+            : L.Format("MacroHotkeyRegistrationFailed", hotkey);
+    }
+
+    private void MacrosCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (MacroDefinition macro in e.OldItems)
+            {
+                UnsubscribeMacro(macro);
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (MacroDefinition macro in e.NewItems)
+            {
+                SubscribeMacro(macro);
+            }
+        }
+
+        MacroHotkeysChanged?.Invoke(this, EventArgs.Empty);
+        OnPropertyChanged(nameof(Macros));
+        RaiseMacroCommandStates();
+    }
+
+    private void SubscribeMacro(MacroDefinition macro)
+    {
+        macro.PropertyChanged += MacroPropertyChanged;
+        macro.Steps.CollectionChanged += MacroStepsCollectionChanged;
+        foreach (var step in macro.Steps)
+        {
+            step.PropertyChanged += MacroStepPropertyChanged;
+        }
+    }
+
+    private void UnsubscribeMacro(MacroDefinition macro)
+    {
+        macro.PropertyChanged -= MacroPropertyChanged;
+        macro.Steps.CollectionChanged -= MacroStepsCollectionChanged;
+        foreach (var step in macro.Steps)
+        {
+            step.PropertyChanged -= MacroStepPropertyChanged;
+        }
+    }
+
+    private void MacroPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MacroDefinition.Hotkey) or nameof(MacroDefinition.Enabled))
+        {
+            MacroHotkeysChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void MacroStepsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (MacroStep step in e.OldItems)
+            {
+                step.PropertyChanged -= MacroStepPropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (MacroStep step in e.NewItems)
+            {
+                step.PropertyChanged += MacroStepPropertyChanged;
+            }
+        }
+
+        RaiseMacroCommandStates();
+    }
+
+    private void MacroStepPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (SelectedMacro is not null)
+        {
+            SelectedMacro.LastError = string.Empty;
+        }
+    }
+
+    private string GetMacroStepTypeName(MacroStepType type)
+    {
+        return type switch
+        {
+            MacroStepType.KeyPress => L["MacroStepKeyPress"],
+            MacroStepType.Delay => L["MacroStepDelayAction"],
+            MacroStepType.MouseClick => L["MacroStepMouseClick"],
+            MacroStepType.MouseMove => L["MacroStepMouseMove"],
+            MacroStepType.MouseWheel => L["MacroStepMouseWheel"],
+            _ => L["MacroStepType"]
+        };
+    }
+
+    private MacroValidationResult ValidateMacro(MacroDefinition macro)
+    {
+        return _macroValidator.Validate(macro, Macros, GetReservedHotkeys());
+    }
+
+    private IEnumerable<string> GetReservedHotkeys()
+    {
+        yield return Settings.ScreenTranslationHotkey;
+        yield return Settings.ScreenTranslationCaptureHotkey;
+        yield return Settings.ScreenTranslationRegionHotkey;
+        yield return Settings.UiDimmingHotkey;
+        if (Settings.StarCitizenHotkeysEnabled)
+        {
+            yield return Settings.StarCitizenServerChangeHotkey;
+            yield return Settings.StarCitizenRespawnHotkey;
+            yield return Settings.StarCitizenStutterHotkey;
+        }
+    }
+
+    private void SaveValidMacros()
+    {
+        if (Macros.All(macro => ValidateMacro(macro).IsValid))
+        {
+            _macroStorage.Save(Macros);
+        }
+    }
+
+    private void MacroExecutionChanged(object? sender, MacroExecutionChangedEventArgs e)
+    {
+        System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            var macro = Macros.FirstOrDefault(item => item.Id == e.MacroId);
+            if (macro is null)
+            {
+                return;
+            }
+
+            macro.RunState = e.State;
+            macro.LastError = e.Error ?? string.Empty;
+            MacroStatusText = e.State switch
+            {
+                MacroRunState.Running => L.Format("MacroRunning", macro.Name),
+                MacroRunState.Stopping => L["MacroStopping"],
+                MacroRunState.Error => L.Format("MacroFailedStatus", macro.Name, e.Error ?? string.Empty),
+                _ => L["MacroReady"]
+            };
+            OnPropertyChanged(nameof(IsMacroRunning));
+            RaiseMacroCommandStates();
+        }));
+    }
+
+    private void RaiseMacroCommandStates()
+    {
+        RemoveMacroCommand.RaiseCanExecuteChanged();
+        DuplicateMacroCommand.RaiseCanExecuteChanged();
+        SaveMacroCommand.RaiseCanExecuteChanged();
+        ClearMacroHotkeyCommand.RaiseCanExecuteChanged();
+        AddMacroKeyStepCommand.RaiseCanExecuteChanged();
+        AddMacroDelayStepCommand.RaiseCanExecuteChanged();
+        AddMacroMouseClickStepCommand.RaiseCanExecuteChanged();
+        AddMacroMouseMoveStepCommand.RaiseCanExecuteChanged();
+        AddMacroMouseWheelStepCommand.RaiseCanExecuteChanged();
+        RemoveMacroStepCommand.RaiseCanExecuteChanged();
+        MoveMacroStepUpCommand.RaiseCanExecuteChanged();
+        MoveMacroStepDownCommand.RaiseCanExecuteChanged();
+        RunMacroCommand.RaiseCanExecuteChanged();
+        StopMacroCommand.RaiseCanExecuteChanged();
     }
 
     private void RefreshDataStorage()

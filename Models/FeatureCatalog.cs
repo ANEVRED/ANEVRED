@@ -10,6 +10,7 @@ public static class FeatureCatalog
         new("Gaming", "GamingMode", "G", nameof(AppSettings.FeatureGamingEnabled)),
         new("StarCitizen", "StarCitizenHub", "☆", nameof(AppSettings.FeatureStarCitizenEnabled)),
         new("Hardware", "HardwareMonitor", "▣", nameof(AppSettings.FeatureHardwareEnabled)),
+        new("Macros", "MacroManager", "⌨", nameof(AppSettings.FeatureMacrosEnabled)),
         new("Logs", "Logs", "≡", nameof(AppSettings.FeatureLogsEnabled)),
         new("Settings", "Settings", "⚙", null, true),
         new("Info", "AppInfo", "i", null, true)

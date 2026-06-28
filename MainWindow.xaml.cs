@@ -19,8 +19,19 @@ public partial class MainWindow : Window
 {
     private const int WmHotkey = 0x0312;
     private const int WmKeydown = 0x0100;
+    private const int WmKeyup = 0x0101;
     private const int WmSyskeydown = 0x0104;
+    private const int WmSyskeyup = 0x0105;
     private const int WhKeyboardLl = 13;
+    private const int WhMouseLl = 14;
+    private const int WmLbuttonDown = 0x0201;
+    private const int WmLbuttonUp = 0x0202;
+    private const int WmRbuttonDown = 0x0204;
+    private const int WmRbuttonUp = 0x0205;
+    private const int WmMbuttonDown = 0x0207;
+    private const int WmMbuttonUp = 0x0208;
+    private const int WmXbuttonDown = 0x020B;
+    private const int WmXbuttonUp = 0x020C;
     private const int HotkeyServerChange = 101;
     private const int HotkeyRespawn = 102;
     private const int HotkeyStutter = 103;
@@ -28,12 +39,17 @@ public partial class MainWindow : Window
     private const int HotkeyScreenTranslationCapture = 105;
     private const int HotkeyScreenTranslationRegion = 106;
     private const int HotkeyUiDimming = 107;
+    private const int MacroHotkeyBase = 2000;
     private const uint ModAlt = 0x0001;
     private const uint ModControl = 0x0002;
+    private const uint ModShift = 0x0004;
+    private const uint ModWin = 0x0008;
     private const uint ModNoRepeat = 0x4000;
     private const int VkControl = 0x11;
     private const int VkMenu = 0x12;
     private const int VkShift = 0x10;
+    private const int VkLWin = 0x5B;
+    private const int VkRWin = 0x5C;
 
     private readonly MainViewModel _viewModel;
     private readonly Services.ScreenTranslationService _screenTranslationService;
@@ -41,6 +57,7 @@ public partial class MainWindow : Window
     private readonly System.Windows.Threading.DispatcherTimer _screenTranslationTimer = new();
     private readonly System.Windows.Threading.DispatcherTimer _uiDimmingAutoTimer = new();
     private readonly LowLevelKeyboardProc _keyboardProc;
+    private readonly LowLevelMouseProc _mouseProc;
     private Forms.NotifyIcon? _notifyIcon;
     private Forms.ContextMenuStrip? _trayMenu;
     private HwndSource? _source;
@@ -52,7 +69,9 @@ public partial class MainWindow : Window
     private int _screenTranslationRunId;
     private readonly HashSet<int> _registeredHotkeyIds = [];
     private readonly Dictionary<int, DateTime> _lastHotkeyDispatch = [];
+    private readonly Dictionary<int, Guid> _macroHotkeyIds = [];
     private IntPtr _keyboardHook;
+    private IntPtr _mouseHook;
     private DateTime _lastTranslationToggle = DateTime.MinValue;
     private DateTime _lastTranslationCapture = DateTime.MinValue;
     private WindowState _lastNonMinimizedWindowState = WindowState.Maximized;
@@ -64,6 +83,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _keyboardProc = KeyboardHookCallback;
+        _mouseProc = MouseHookCallback;
         _viewModel = new MainViewModel();
         _screenTranslationService = new Services.ScreenTranslationService(
             message => _viewModel.AddDiagnosticLog("Info", "ScreenTranslation: " + message),
@@ -73,6 +93,7 @@ public partial class MainWindow : Window
         _viewModel.ThemeChanged += (_, _) => ApplyTheme();
         _viewModel.NotificationRequested += ShowNotification;
         _viewModel.ConfirmationRequested += ConfirmAction;
+        _viewModel.MacroHotkeysChanged += ViewModelMacroHotkeysChanged;
         _viewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.TrayText))
@@ -121,6 +142,7 @@ public partial class MainWindow : Window
         _displayColorFilterService.Restore();
         UnregisterGlobalHotkeys();
         UninstallKeyboardHook();
+        UninstallMouseHook();
         _source?.RemoveHook(WndProc);
         _screenTranslationTimer.Stop();
         _screenTranslationService.Dispose();
@@ -130,6 +152,7 @@ public partial class MainWindow : Window
         _notifyIcon?.Dispose();
         _trayMenu?.Dispose();
         _viewModel.ConfirmationRequested -= ConfirmAction;
+        _viewModel.MacroHotkeysChanged -= ViewModelMacroHotkeysChanged;
         _viewModel.Settings.PropertyChanged -= SettingsPropertyChanged;
         _viewModel.Dispose();
         base.OnClosed(e);
@@ -231,6 +254,7 @@ public partial class MainWindow : Window
         LogTimeColumn.Header = _viewModel.L["Time"];
         LogLevelColumn.Header = _viewModel.L["Level"];
         LogMessageColumn.Header = _viewModel.L["Message"];
+
     }
 
     private void ApplyTheme()
@@ -439,18 +463,21 @@ public partial class MainWindow : Window
         _source?.AddHook(WndProc);
         RegisterGlobalHotkeys();
         InstallKeyboardHook();
+        InstallMouseHook();
     }
 
     private void RegisterGlobalHotkeys()
     {
         UnregisterGlobalHotkeys();
         _registeredHotkeyIds.Clear();
+        _macroHotkeyIds.Clear();
         var registered = new List<string>();
         var failed = new List<string>();
         RegisterConfiguredHotkey(HotkeyScreenTranslation, _viewModel.Settings.ScreenTranslationHotkey, registered, failed);
         RegisterConfiguredHotkey(HotkeyScreenTranslationCapture, _viewModel.Settings.ScreenTranslationCaptureHotkey, registered, failed);
         RegisterConfiguredHotkey(HotkeyScreenTranslationRegion, _viewModel.Settings.ScreenTranslationRegionHotkey, registered, failed);
         RegisterConfiguredHotkey(HotkeyUiDimming, _viewModel.Settings.UiDimmingHotkey, registered, failed);
+        RegisterMacroHotkeys(registered, failed);
 
         if (!_viewModel.Settings.StarCitizenHotkeysEnabled)
         {
@@ -471,13 +498,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        UnregisterHotKey(_windowHandle, HotkeyServerChange);
-        UnregisterHotKey(_windowHandle, HotkeyRespawn);
-        UnregisterHotKey(_windowHandle, HotkeyStutter);
-        UnregisterHotKey(_windowHandle, HotkeyScreenTranslation);
-        UnregisterHotKey(_windowHandle, HotkeyScreenTranslationCapture);
-        UnregisterHotKey(_windowHandle, HotkeyScreenTranslationRegion);
-        UnregisterHotKey(_windowHandle, HotkeyUiDimming);
+        foreach (var id in _registeredHotkeyIds.ToList())
+        {
+            UnregisterHotKey(_windowHandle, id);
+        }
+
+        _registeredHotkeyIds.Clear();
+        _macroHotkeyIds.Clear();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -503,6 +530,12 @@ public partial class MainWindow : Window
         }
 
         _lastHotkeyDispatch[hotkeyId] = now;
+        if (_macroHotkeyIds.TryGetValue(hotkeyId, out var macroId))
+        {
+            _ = _viewModel.RunMacroAsync(macroId);
+            return;
+        }
+
         switch (hotkeyId)
         {
             case HotkeyServerChange:
@@ -529,23 +562,55 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RegisterConfiguredHotkey(int id, string hotkeyText, List<string> registered, List<string> failed)
+    private void RegisterMacroHotkeys(List<string> registered, List<string> failed)
+    {
+        var index = 0;
+        foreach (var macro in _viewModel.Macros.Where(item =>
+                     item.Enabled && !string.IsNullOrWhiteSpace(item.Hotkey)).Take(50))
+        {
+            var id = MacroHotkeyBase + index++;
+            if (HotkeyParser.TryParse(macro.Hotkey, out var parsed) && parsed.IsMouse)
+            {
+                _macroHotkeyIds[id] = macro.Id;
+                registered.Add(macro.Hotkey);
+            }
+            else if (RegisterConfiguredHotkey(id, macro.Hotkey, registered, failed))
+            {
+                _macroHotkeyIds[id] = macro.Id;
+            }
+        }
+    }
+
+    private void ViewModelMacroHotkeysChanged(object? sender, EventArgs e)
+    {
+        if (_windowHandle != IntPtr.Zero && _pendingHotkeyTarget is null)
+        {
+            RegisterGlobalHotkeys();
+        }
+    }
+
+    private bool RegisterConfiguredHotkey(int id, string hotkeyText, List<string> registered, List<string> failed)
     {
         if (!TryParseHotkey(hotkeyText, out var modifiers, out var key))
         {
             failed.Add(hotkeyText);
-            return;
+            return false;
         }
 
         if (RegisterHotKey(_windowHandle, id, modifiers | ModNoRepeat, key))
         {
             _registeredHotkeyIds.Add(id);
             registered.Add(hotkeyText);
+            return true;
         }
-        else
-        {
-            failed.Add(hotkeyText);
-        }
+
+        failed.Add(hotkeyText);
+        return false;
+    }
+
+    private bool IsMacroHotkeyRegistered(Guid macroId)
+    {
+        return _macroHotkeyIds.Values.Contains(macroId);
     }
 
     private static bool TryParseHotkey(string hotkeyText, out uint modifiers, out uint key)
@@ -582,7 +647,14 @@ public partial class MainWindow : Window
             if (normalized.Equals("Shift", StringComparison.OrdinalIgnoreCase)
                 || normalized.Equals("Umschalt", StringComparison.OrdinalIgnoreCase))
             {
-                modifiers |= 0x0004;
+                modifiers |= ModShift;
+                continue;
+            }
+
+            if (normalized.Equals("Win", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Windows", StringComparison.OrdinalIgnoreCase))
+            {
+                modifiers |= ModWin;
                 continue;
             }
 
@@ -616,7 +688,23 @@ public partial class MainWindow : Window
             return (uint)(0x70 + functionKey - 1);
         }
 
-        return 0;
+        var key = value.ToUpperInvariant() switch
+        {
+            "ENTER" => Key.Return,
+            "SPACE" or "SPACEBAR" or "LEERTASTE" => Key.Space,
+            "BACKSPACE" => Key.Back,
+            "DEL" => Key.Delete,
+            "INS" => Key.Insert,
+            "PGUP" => Key.PageUp,
+            "PGDN" => Key.PageDown,
+            "UP" => Key.Up,
+            "DOWN" => Key.Down,
+            "LEFT" => Key.Left,
+            "RIGHT" => Key.Right,
+            _ => Enum.TryParse<Key>(value, true, out var parsedKey) ? parsedKey : Key.None
+        };
+
+        return key == Key.None ? 0 : (uint)KeyInterop.VirtualKeyFromKey(key);
     }
 
     private void SettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1049,6 +1137,37 @@ public partial class MainWindow : Window
 
     private readonly record struct DimmingSuggestion(int Red, int Green, int Blue, double OpacityPercent);
 
+    private void AddMacroButtonClick(object sender, RoutedEventArgs e)
+    {
+        _viewModel.AddMacroCommand.Execute(null);
+    }
+
+    private void MacroWheelDirectionSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ComboBox { SelectedValue: string direction }
+            && _viewModel.SelectedMacroStep is { Type: MacroStepType.MouseWheel } step
+            && !step.WheelDirection.Equals(direction, StringComparison.OrdinalIgnoreCase))
+        {
+            step.WheelDirection = direction;
+        }
+    }
+
+    private void MacroWheelStepsLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.TextBox textBox
+            || _viewModel.SelectedMacroStep is not { Type: MacroStepType.MouseWheel } step)
+        {
+            return;
+        }
+
+        if (int.TryParse(textBox.Text, out var steps) && steps is >= 1 and <= 100)
+        {
+            step.WheelSteps = steps;
+        }
+
+        textBox.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateTarget();
+    }
+
     private void CaptureHotkeyButtonClick(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.Button button || button.Tag is not string target)
@@ -1056,9 +1175,30 @@ public partial class MainWindow : Window
             return;
         }
 
+        BeginHotkeyCapture(target);
+    }
+
+    private void BeginHotkeyCapture(string target)
+    {
+        if (target.Equals("MacroActivation", StringComparison.Ordinal))
+        {
+            if (_viewModel.SelectedMacro is null)
+            {
+                return;
+            }
+
+            target = $"Macro:{_viewModel.SelectedMacro.Id}";
+        }
+
         _pendingHotkeyTarget = target;
         UnregisterGlobalHotkeys();
         _viewModel.SetHotkeyStatus(true, _viewModel.L["HotkeyCapturePrompt"]);
+        if (target.StartsWith("Macro:", StringComparison.Ordinal))
+        {
+            _viewModel.SetMacroCaptureState(true, _viewModel.L["MacroHotkeyCapturePrompt"]);
+        }
+
+        Activate();
         Focus();
         Keyboard.Focus(this);
     }
@@ -1075,9 +1215,14 @@ public partial class MainWindow : Window
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (key == Key.Escape)
         {
+            var wasMacroCapture = _pendingHotkeyTarget.StartsWith("Macro:", StringComparison.Ordinal);
             _pendingHotkeyTarget = null;
             RegisterGlobalHotkeys();
             _viewModel.SetHotkeyStatus(true, _viewModel.L["HotkeyCaptureCanceled"]);
+            if (wasMacroCapture)
+            {
+                _viewModel.SetMacroCaptureState(false, _viewModel.L["HotkeyCaptureCanceled"]);
+            }
             return;
         }
 
@@ -1087,14 +1232,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        var hotkey = BuildHotkeyText(Keyboard.Modifiers, key);
+        var isMacroCapture = _pendingHotkeyTarget.StartsWith("Macro:", StringComparison.Ordinal)
+            || _pendingHotkeyTarget.Equals("MacroStep", StringComparison.Ordinal);
+        var hotkey = BuildHotkeyText(Keyboard.Modifiers, key, allowUnmodified: isMacroCapture);
         if (string.IsNullOrWhiteSpace(hotkey))
         {
             _viewModel.SetHotkeyStatus(false, _viewModel.L["HotkeyCaptureInvalid"]);
             return;
         }
 
-        switch (_pendingHotkeyTarget)
+        var completedTarget = _pendingHotkeyTarget;
+        Guid? capturedMacroId = null;
+        switch (completedTarget)
         {
             case "ServerChange":
                 _viewModel.Settings.StarCitizenServerChangeHotkey = hotkey;
@@ -1117,10 +1266,88 @@ public partial class MainWindow : Window
             case "UiDimming":
                 _viewModel.Settings.UiDimmingHotkey = hotkey;
                 break;
+            case "MacroStep":
+                _viewModel.SetSelectedMacroStepKey(hotkey);
+                break;
+            default:
+                if (completedTarget.StartsWith("Macro:", StringComparison.Ordinal)
+                    && Guid.TryParse(completedTarget["Macro:".Length..], out var macroId))
+                {
+                    _viewModel.SetMacroHotkey(macroId, hotkey);
+                    capturedMacroId = macroId;
+                }
+                break;
         }
 
         _pendingHotkeyTarget = null;
         RegisterGlobalHotkeys();
+        if (capturedMacroId is Guid id)
+        {
+            _viewModel.SetMacroCaptureState(false, string.Empty);
+            _viewModel.SetMacroHotkeyRegistrationResult(hotkey, IsMacroHotkeyRegistered(id));
+        }
+    }
+
+    protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+    {
+        if (_pendingHotkeyTarget is null
+            || (!_pendingHotkeyTarget.StartsWith("Macro:", StringComparison.Ordinal)
+                && !_pendingHotkeyTarget.Equals("MacroStep", StringComparison.Ordinal)))
+        {
+            base.OnPreviewMouseDown(e);
+            return;
+        }
+
+        var button = e.ChangedButton switch
+        {
+            MouseButton.Left => "MouseLeft",
+            MouseButton.Right => "MouseRight",
+            MouseButton.Middle => "MouseMiddle",
+            MouseButton.XButton1 => "MouseX1",
+            MouseButton.XButton2 => "MouseX2",
+            _ => string.Empty
+        };
+        if (string.IsNullOrWhiteSpace(button))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        var modifiers = Keyboard.Modifiers;
+        var parts = new List<string>();
+        if (modifiers.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
+        if (modifiers.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
+        if (modifiers.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");
+        if (modifiers.HasFlag(ModifierKeys.Windows)) parts.Add("Win");
+        parts.Add(button);
+        CompleteMacroHotkeyCapture(string.Join("+", parts));
+    }
+
+    private void CompleteMacroHotkeyCapture(string hotkey)
+    {
+        var completedTarget = _pendingHotkeyTarget;
+        if (completedTarget is null)
+        {
+            return;
+        }
+
+        if (completedTarget.Equals("MacroStep", StringComparison.Ordinal))
+        {
+            _pendingHotkeyTarget = null;
+            RegisterGlobalHotkeys();
+            _viewModel.SetMacroCaptureState(false, _viewModel.L["MacroMouseStepCaptureInvalid"]);
+            return;
+        }
+
+        if (completedTarget.StartsWith("Macro:", StringComparison.Ordinal)
+            && Guid.TryParse(completedTarget["Macro:".Length..], out var macroId))
+        {
+            _viewModel.SetMacroHotkey(macroId, hotkey);
+            _pendingHotkeyTarget = null;
+            RegisterGlobalHotkeys();
+            _viewModel.SetMacroCaptureState(false, string.Empty);
+            _viewModel.SetMacroHotkeyRegistrationResult(hotkey, IsMacroHotkeyRegistered(macroId));
+        }
     }
 
     private void BrowseStarCitizenPathClick(object sender, RoutedEventArgs e)
@@ -1513,7 +1740,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private static string BuildHotkeyText(ModifierKeys modifiers, Key key)
+    private static string BuildHotkeyText(ModifierKeys modifiers, Key key, bool allowUnmodified = false)
     {
         var parts = new List<string>();
         if (modifiers.HasFlag(ModifierKeys.Control))
@@ -1531,7 +1758,12 @@ public partial class MainWindow : Window
             parts.Add("Shift");
         }
 
-        if (parts.Count == 0)
+        if (modifiers.HasFlag(ModifierKeys.Windows))
+        {
+            parts.Add("Win");
+        }
+
+        if (parts.Count == 0 && !allowUnmodified)
         {
             return string.Empty;
         }
@@ -1563,7 +1795,30 @@ public partial class MainWindow : Window
             return key.ToString();
         }
 
-        return string.Empty;
+        return key switch
+        {
+            Key.Return => "Enter",
+            Key.Space => "Space",
+            Key.Tab => "Tab",
+            Key.Back => "Backspace",
+            Key.Delete => "Delete",
+            Key.Insert => "Insert",
+            Key.Home => "Home",
+            Key.End => "End",
+            Key.PageUp => "PageUp",
+            Key.PageDown => "PageDown",
+            Key.Left => "Left",
+            Key.Right => "Right",
+            Key.Up => "Up",
+            Key.Down => "Down",
+            Key.NumPad0 or Key.NumPad1 or Key.NumPad2 or Key.NumPad3 or Key.NumPad4
+                or Key.NumPad5 or Key.NumPad6 or Key.NumPad7 or Key.NumPad8 or Key.NumPad9 => key.ToString(),
+            Key.Add or Key.Subtract or Key.Multiply or Key.Divide or Key.Decimal => key.ToString(),
+            Key.OemPlus or Key.OemMinus or Key.OemComma or Key.OemPeriod
+                or Key.Oem1 or Key.Oem2 or Key.Oem3 or Key.Oem4 or Key.Oem5 or Key.Oem6 or Key.Oem7
+                or Key.CapsLock or Key.Scroll or Key.Pause => key.ToString(),
+            _ => string.Empty
+        };
     }
 
     private void ProcessGridPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -1619,6 +1874,31 @@ public partial class MainWindow : Window
         }
     }
 
+    private void InstallMouseHook()
+    {
+        if (_mouseHook != IntPtr.Zero)
+        {
+            return;
+        }
+
+        _mouseHook = SetWindowsHookEx(WhMouseLl, _mouseProc, IntPtr.Zero, 0);
+        if (_mouseHook == IntPtr.Zero)
+        {
+            _viewModel.AddDiagnosticLog("Warn", $"Low-level mouse hook could not be installed. Win32 {Marshal.GetLastWin32Error()}.");
+        }
+    }
+
+    private void UninstallMouseHook()
+    {
+        if (_mouseHook == IntPtr.Zero)
+        {
+            return;
+        }
+
+        _ = UnhookWindowsHookEx(_mouseHook);
+        _mouseHook = IntPtr.Zero;
+    }
+
     private void UninstallKeyboardHook()
     {
         if (_keyboardHook == IntPtr.Zero)
@@ -1632,17 +1912,98 @@ public partial class MainWindow : Window
 
     private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && (wParam.ToInt32() == WmKeydown || wParam.ToInt32() == WmSyskeydown))
+        var message = wParam.ToInt32();
+        if (nCode >= 0 && (message == WmKeydown || message == WmSyskeydown || message == WmKeyup || message == WmSyskeyup))
         {
+            var flags = (uint)Marshal.ReadInt32(lParam, 8);
+            if ((flags & 0x10) != 0)
+            {
+                return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+            }
+
             var virtualKey = (uint)Marshal.ReadInt32(lParam);
             var hotkeyId = ResolveHookHotkey(virtualKey);
             if (hotkeyId != 0)
+            {
+                if (message == WmKeyup || message == WmSyskeyup)
+                {
+                    if (_macroHotkeyIds.TryGetValue(hotkeyId, out var macroId))
+                    {
+                        Dispatcher.BeginInvoke(new Action(() => _viewModel.ReleaseMacroHotkey(macroId)));
+                    }
+                }
+                else
+                {
+                    Dispatcher.BeginInvoke(new Action(() => DispatchHotkey(hotkeyId)));
+                }
+            }
+        }
+
+        return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+    }
+
+    private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+    {
+        if (nCode < 0 || _pendingHotkeyTarget is not null)
+        {
+            return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+        }
+
+        var flags = (uint)Marshal.ReadInt32(lParam, 12);
+        if ((flags & 0x1) != 0)
+        {
+            return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+        }
+
+        var message = wParam.ToInt32();
+        var button = message switch
+        {
+            WmLbuttonDown or WmLbuttonUp => "MouseLeft",
+            WmRbuttonDown or WmRbuttonUp => "MouseRight",
+            WmMbuttonDown or WmMbuttonUp => "MouseMiddle",
+            WmXbuttonDown or WmXbuttonUp => ((Marshal.ReadInt32(lParam, 8) >> 16) & 0xFFFF) == 1 ? "MouseX1" : "MouseX2",
+            _ => string.Empty
+        };
+        if (string.IsNullOrEmpty(button))
+        {
+            return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+        }
+
+        var hotkeyId = ResolveMouseHookHotkey(button);
+        if (hotkeyId != 0)
+        {
+            var isUp = message is WmLbuttonUp or WmRbuttonUp or WmMbuttonUp or WmXbuttonUp;
+            if (isUp && _macroHotkeyIds.TryGetValue(hotkeyId, out var macroId))
+            {
+                Dispatcher.BeginInvoke(new Action(() => _viewModel.ReleaseMacroHotkey(macroId)));
+            }
+            else if (!isUp)
             {
                 Dispatcher.BeginInvoke(new Action(() => DispatchHotkey(hotkeyId)));
             }
         }
 
-        return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+        return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+    }
+
+    private int ResolveMouseHookHotkey(string button)
+    {
+        foreach (var (hotkeyId, macroId) in _macroHotkeyIds)
+        {
+            var macro = _viewModel.Macros.FirstOrDefault(item => item.Id == macroId);
+            if (macro is not { Enabled: true } || !HotkeyParser.TryParse(macro.Hotkey, out var parsed)
+                || !parsed.IsMouse || !parsed.MouseButton!.Equals(button, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (ModifiersMatch(parsed.Modifiers))
+            {
+                return hotkeyId;
+            }
+        }
+
+        return 0;
     }
 
     private int ResolveHookHotkey(uint virtualKey)
@@ -1665,6 +2026,15 @@ public partial class MainWindow : Window
         if (MatchesHotkey(_viewModel.Settings.UiDimmingHotkey, virtualKey))
         {
             return HotkeyUiDimming;
+        }
+
+        foreach (var (hotkeyId, macroId) in _macroHotkeyIds)
+        {
+            var macro = _viewModel.Macros.FirstOrDefault(item => item.Id == macroId);
+            if (macro is { Enabled: true } && MatchesHotkey(macro.Hotkey, virtualKey))
+            {
+                return hotkeyId;
+            }
         }
 
         if (!_viewModel.Settings.StarCitizenHotkeysEnabled)
@@ -1697,9 +2067,15 @@ public partial class MainWindow : Window
             return false;
         }
 
+        return ModifiersMatch(modifiers);
+    }
+
+    private static bool ModifiersMatch(uint modifiers)
+    {
         var controlDown = IsKeyDown(VkControl);
         var altDown = IsKeyDown(VkMenu);
         var shiftDown = IsKeyDown(VkShift);
+        var windowsDown = IsKeyDown(VkLWin) || IsKeyDown(VkRWin);
         if (((modifiers & ModControl) != 0) != controlDown)
         {
             return false;
@@ -1710,7 +2086,12 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (((modifiers & 0x0004) != 0) != shiftDown)
+        if (((modifiers & ModShift) != 0) != shiftDown)
+        {
+            return false;
+        }
+
+        if (((modifiers & ModWin) != 0) != windowsDown)
         {
             return false;
         }
@@ -1724,6 +2105,7 @@ public partial class MainWindow : Window
     }
 
     private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+    private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -1733,6 +2115,9 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc callback, IntPtr moduleHandle, uint threadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc callback, IntPtr moduleHandle, uint threadId);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool UnhookWindowsHookEx(IntPtr hook);

@@ -327,6 +327,11 @@ public sealed class ChromeTranslationService : IDisposable
         }
 
         var payload = JsonSerializer.Deserialize<ChromeTranslationPayload>(value);
+        if (!string.IsNullOrWhiteSpace(payload?.SourceLanguage))
+        {
+            _log?.Invoke($"Chrome translation source detected/selected: {payload.SourceLanguage} -> {targetLanguage}, availability={payload.Availability}.");
+        }
+
         if (!string.IsNullOrWhiteSpace(payload?.Error))
         {
             _log?.Invoke("Chrome translation failed: " + payload.Error);
@@ -442,11 +447,33 @@ public sealed class ChromeTranslationService : IDisposable
   let sourceLanguages = fallbackSourceLanguages;
   const errors = [];
 
+  async function waitUntilReady(model) {
+    if (model && model.ready && typeof model.ready.then === 'function') {
+      await model.ready;
+    }
+    return model;
+  }
+
+  async function createWithOptionalMonitor(factory, options) {
+    try {
+      return await waitUntilReady(await factory.create({
+        ...options,
+        monitor(monitor) {
+          if (monitor && typeof monitor.addEventListener === 'function') {
+            monitor.addEventListener('downloadprogress', () => {});
+          }
+        }
+      }));
+    } catch {
+      return await waitUntilReady(await factory.create(options));
+    }
+  }
+
   if ('LanguageDetector' in globalThis) {
     try {
       const detectorAvailability = await LanguageDetector.availability();
       if (detectorAvailability !== 'unavailable') {
-        const detector = await LanguageDetector.create();
+        const detector = await createWithOptionalMonitor(LanguageDetector, {});
         const detections = await detector.detect({{textJson}});
         const detectedLanguages = (Array.isArray(detections) ? detections : [])
           .map(item => item.detectedLanguage || item.language || item)
@@ -463,16 +490,21 @@ public sealed class ChromeTranslationService : IDisposable
       continue;
     }
 
-    const availability = await Translator.availability({ sourceLanguage, targetLanguage });
-    if (availability === 'unavailable') {
-      errors.push(`${sourceLanguage}->${targetLanguage}: unavailable`);
-      continue;
-    }
+    try {
+      const options = { sourceLanguage, targetLanguage };
+      const availability = await Translator.availability(options);
+      if (availability === 'unavailable') {
+        errors.push(`${sourceLanguage}->${targetLanguage}: unavailable`);
+        continue;
+      }
 
-    const translator = await Translator.create({ sourceLanguage, targetLanguage });
-    const translated = await translator.translate({{textJson}});
-    if (typeof translated === 'string' && translated.trim().length > 0) {
-      return JSON.stringify({ text: translated, sourceLanguage });
+      const translator = await createWithOptionalMonitor(Translator, options);
+      const translated = await translator.translate({{textJson}});
+      if (typeof translated === 'string' && translated.trim().length > 0) {
+        return JSON.stringify({ text: translated, sourceLanguage, availability });
+      }
+    } catch (error) {
+      errors.push(`${sourceLanguage}->${targetLanguage}: ${error && error.message ? error.message : error}`);
     }
   }
 
@@ -502,6 +534,28 @@ public sealed class ChromeTranslationService : IDisposable
     return JSON.stringify(result);
   }
 
+  async function waitUntilReady(model) {
+    if (model && model.ready && typeof model.ready.then === 'function') {
+      await model.ready;
+    }
+    return model;
+  }
+
+  async function createWithOptionalMonitor(factory, options) {
+    try {
+      return await waitUntilReady(await factory.create({
+        ...options,
+        monitor(monitor) {
+          if (monitor && typeof monitor.addEventListener === 'function') {
+            monitor.addEventListener('downloadprogress', () => {});
+          }
+        }
+      }));
+    } catch {
+      return await waitUntilReady(await factory.create(options));
+    }
+  }
+
   result.hasTranslator = true;
   const sourceLanguages = {{JsonSerializer.Serialize(GetSourceLanguageCandidates(targetLanguage))}};
   const sourceLanguage = sourceLanguages.find(language => language !== targetLanguage) || 'en';
@@ -515,7 +569,7 @@ public sealed class ChromeTranslationService : IDisposable
     return JSON.stringify(result);
   }
 
-  const translator = await Translator.create({ sourceLanguage, targetLanguage });
+  const translator = await createWithOptionalMonitor(Translator, { sourceLanguage, targetLanguage });
   result.sample = await translator.translate('Hello pilot. Your mission is ready.');
   return JSON.stringify(result);
 })()
@@ -734,6 +788,8 @@ public sealed class ChromeTranslationService : IDisposable
 
     private sealed record ChromeTranslationPayload(
         [property: JsonPropertyName("text")] string? Text,
+        [property: JsonPropertyName("sourceLanguage")] string? SourceLanguage,
+        [property: JsonPropertyName("availability")] string? Availability,
         [property: JsonPropertyName("error")] string? Error);
 
     [SuppressMessage("Performance", "CA1812", Justification = "Deserialized from Chrome DevTools JSON.")]

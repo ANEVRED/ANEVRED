@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="ANEVRED.csproj" />
+  <Project Path="Tests\ANEVRED.CoreTests.csproj" />
 </Solution>

@@ -62,6 +62,7 @@ public sealed class AppSettings : INotifyPropertyChanged
     private bool _featureGamingEnabled = true;
     private bool _featureStarCitizenEnabled = true;
     private bool _featureHardwareEnabled = true;
+    private bool _featureMacrosEnabled = true;
     private bool _featureLogsEnabled = true;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -414,6 +415,12 @@ public sealed class AppSettings : INotifyPropertyChanged
         set => SetField(ref _featureHardwareEnabled, value);
     }
 
+    public bool FeatureMacrosEnabled
+    {
+        get => _featureMacrosEnabled;
+        set => SetField(ref _featureMacrosEnabled, value);
+    }
+
     public bool FeatureLogsEnabled
     {
         get => _featureLogsEnabled;
@@ -421,6 +428,7 @@ public sealed class AppSettings : INotifyPropertyChanged
     }
 
     public ObservableCollection<ProtectionRule> ProtectionRules { get; set; } = [];
+    public ObservableCollection<MacroDefinition> Macros { get; set; } = [];
 
     public static AppSettings CreateDefault(string language)
     {
@@ -482,6 +490,7 @@ public sealed class AppSettings : INotifyPropertyChanged
             nameof(FeatureGamingEnabled) => FeatureGamingEnabled,
             nameof(FeatureStarCitizenEnabled) => FeatureStarCitizenEnabled,
             nameof(FeatureHardwareEnabled) => FeatureHardwareEnabled,
+            nameof(FeatureMacrosEnabled) => FeatureMacrosEnabled,
             nameof(FeatureLogsEnabled) => FeatureLogsEnabled,
             _ => true
         };
@@ -505,6 +514,9 @@ public sealed class AppSettings : INotifyPropertyChanged
                 break;
             case nameof(FeatureHardwareEnabled):
                 FeatureHardwareEnabled = value;
+                break;
+            case nameof(FeatureMacrosEnabled):
+                FeatureMacrosEnabled = value;
                 break;
             case nameof(FeatureLogsEnabled):
                 FeatureLogsEnabled = value;
@@ -551,6 +563,24 @@ public sealed class AppSettings : INotifyPropertyChanged
         MainWindowState = MainWindowState;
         MainWindowWidth = MainWindowWidth;
         MainWindowHeight = MainWindowHeight;
+        Macros ??= [];
+        foreach (var macro in Macros.Take(50))
+        {
+            macro.RepeatCount = macro.RepeatCount;
+            macro.Steps ??= [];
+            while (macro.Steps.Count > 100)
+            {
+                macro.Steps.RemoveAt(macro.Steps.Count - 1);
+            }
+
+            foreach (var step in macro.Steps)
+            {
+                step.DelayMs = step.DelayMs;
+                step.MouseX = step.MouseX;
+                step.MouseY = step.MouseY;
+                step.WheelDelta = step.WheelDelta;
+            }
+        }
     }
 
 }
