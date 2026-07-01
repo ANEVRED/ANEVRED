@@ -9,7 +9,8 @@ internal sealed class PdhCpuSampler : IDisposable
     private const uint PdhFmtDouble = 0x00000200;
     private readonly int _processorCount = Environment.ProcessorCount;
     private IntPtr _query;
-    private IntPtr _counter;
+    private IntPtr _utilityCounter;
+    private IntPtr _processorTimeCounter;
     private bool _available;
     private ulong _lastIdle;
     private ulong _lastKernel;
@@ -29,12 +30,19 @@ internal sealed class PdhCpuSampler : IDisposable
         var powerInfo = ReadPowerInfo();
         if (_available)
         {
-            var pdhCores = ReadFromPdh(powerInfo);
-            if (pdhCores.Count > 0)
+            if (NativeMethods.PdhCollectQueryData(_query) == ErrorSuccess)
             {
-                var total = pdhCores.FirstOrDefault(c => c.Index == -1)?.UsagePercent
-                    ?? pdhCores.Where(c => c.Index >= 0).DefaultIfEmpty().Average(c => c?.UsagePercent ?? 0);
-                return (ClampPercent(total), pdhCores.Where(c => c.Index >= 0).OrderBy(c => c.Index).ToList());
+                var utilityCores = ReadFromPdh(_utilityCounter, powerInfo, ParseProcessorInformationIndex);
+                if (utilityCores.Count > 0)
+                {
+                    return BuildResult(utilityCores);
+                }
+
+                var processorTimeCores = ReadFromPdh(_processorTimeCounter, powerInfo, ParseProcessorIndex);
+                if (processorTimeCores.Count > 0)
+                {
+                    return BuildResult(processorTimeCores);
+                }
             }
         }
 
@@ -51,6 +59,8 @@ internal sealed class PdhCpuSampler : IDisposable
         {
             _ = NativeMethods.PdhCloseQuery(_query);
             _query = IntPtr.Zero;
+            _utilityCounter = IntPtr.Zero;
+            _processorTimeCounter = IntPtr.Zero;
         }
     }
 
@@ -61,8 +71,9 @@ internal sealed class PdhCpuSampler : IDisposable
             return;
         }
 
-        var result = NativeMethods.PdhAddEnglishCounter(_query, @"\Processor(*)\% Processor Time", UIntPtr.Zero, out _counter);
-        if (result != ErrorSuccess)
+        _ = NativeMethods.PdhAddEnglishCounter(_query, @"\Processor Information(*)\% Processor Utility", UIntPtr.Zero, out _utilityCounter);
+        _ = NativeMethods.PdhAddEnglishCounter(_query, @"\Processor(*)\% Processor Time", UIntPtr.Zero, out _processorTimeCounter);
+        if (_utilityCounter == IntPtr.Zero && _processorTimeCounter == IntPtr.Zero)
         {
             _ = NativeMethods.PdhCloseQuery(_query);
             _query = IntPtr.Zero;
@@ -72,16 +83,19 @@ internal sealed class PdhCpuSampler : IDisposable
         _available = NativeMethods.PdhCollectQueryData(_query) == ErrorSuccess;
     }
 
-    private List<CoreMetric> ReadFromPdh(IReadOnlyList<ProcessorPowerInformation> powerInfo)
+    private List<CoreMetric> ReadFromPdh(
+        IntPtr counter,
+        IReadOnlyList<ProcessorPowerInformation> powerInfo,
+        Func<string, int> parseIndex)
     {
-        if (NativeMethods.PdhCollectQueryData(_query) != ErrorSuccess)
+        if (counter == IntPtr.Zero)
         {
             return [];
         }
 
         uint bufferSize = 0;
         uint itemCount = 0;
-        var result = NativeMethods.PdhGetFormattedCounterArray(_counter, PdhFmtDouble, ref bufferSize, ref itemCount, IntPtr.Zero);
+        var result = NativeMethods.PdhGetFormattedCounterArray(counter, PdhFmtDouble, ref bufferSize, ref itemCount, IntPtr.Zero);
         if (result != PdhMoreData || bufferSize == 0 || itemCount == 0)
         {
             return [];
@@ -90,7 +104,7 @@ internal sealed class PdhCpuSampler : IDisposable
         var buffer = System.Runtime.InteropServices.Marshal.AllocHGlobal((int)bufferSize);
         try
         {
-            result = NativeMethods.PdhGetFormattedCounterArray(_counter, PdhFmtDouble, ref bufferSize, ref itemCount, buffer);
+            result = NativeMethods.PdhGetFormattedCounterArray(counter, PdhFmtDouble, ref bufferSize, ref itemCount, buffer);
             if (result != ErrorSuccess)
             {
                 return [];
@@ -101,8 +115,13 @@ internal sealed class PdhCpuSampler : IDisposable
             for (var i = 0; i < itemCount; i++)
             {
                 var item = System.Runtime.InteropServices.Marshal.PtrToStructure<PdhCounterValueItem>(IntPtr.Add(buffer, i * itemSize));
+                if (item.Value.CStatus != ErrorSuccess)
+                {
+                    continue;
+                }
+
                 var name = System.Runtime.InteropServices.Marshal.PtrToStringUni(item.Name) ?? string.Empty;
-                var index = name.Equals("_Total", StringComparison.OrdinalIgnoreCase) ? -1 : ParseCoreIndex(name);
+                var index = parseIndex(name);
                 if (index < -1)
                 {
                     continue;
@@ -117,6 +136,13 @@ internal sealed class PdhCpuSampler : IDisposable
         {
             System.Runtime.InteropServices.Marshal.FreeHGlobal(buffer);
         }
+    }
+
+    private static (double totalCpu, IReadOnlyList<CoreMetric> cores) BuildResult(IReadOnlyList<CoreMetric> pdhCores)
+    {
+        var total = pdhCores.FirstOrDefault(c => c.Index == -1)?.UsagePercent
+            ?? pdhCores.Where(c => c.Index >= 0).DefaultIfEmpty().Average(c => c?.UsagePercent ?? 0);
+        return (ClampPercent(total), pdhCores.Where(c => c.Index >= 0).OrderBy(c => c.Index).ToList());
     }
 
     private IReadOnlyList<ProcessorPowerInformation> ReadPowerInfo()
@@ -189,9 +215,33 @@ internal sealed class PdhCpuSampler : IDisposable
         };
     }
 
-    private static int ParseCoreIndex(string name)
+    private static int ParseProcessorIndex(string name)
     {
+        if (name.Equals("_Total", StringComparison.OrdinalIgnoreCase))
+        {
+            return -1;
+        }
+
         return int.TryParse(name, out var value) ? value : -2;
+    }
+
+    private static int ParseProcessorInformationIndex(string name)
+    {
+        if (name.Equals("_Total", StringComparison.OrdinalIgnoreCase))
+        {
+            return -1;
+        }
+
+        var parts = name.Split(',', 2);
+        if (parts.Length != 2
+            || parts[1].Equals("_Total", StringComparison.OrdinalIgnoreCase)
+            || !int.TryParse(parts[0], out var group)
+            || !int.TryParse(parts[1], out var processor))
+        {
+            return -2;
+        }
+
+        return group * 64 + processor;
     }
 
     private static double ClampPercent(double value)
