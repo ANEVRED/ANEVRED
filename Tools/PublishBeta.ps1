@@ -13,8 +13,13 @@ $packages=$assets.packageFolders.PSObject.Properties.Name
 $notices=Join-Path $publish 'ThirdPartyNotices';New-Item -ItemType Directory -Path $notices -Force|Out-Null
 foreach($name in @('Microsoft.NETCore.App.Runtime.win-x64','Microsoft.WindowsDesktop.App.Runtime.win-x64')){
  $library=$assets.libraries.PSObject.Properties|Where-Object{$_.Name.StartsWith($name+'/',[StringComparison]::OrdinalIgnoreCase)}|Select-Object -First 1
- if(-not $library){throw ('Runtime pack not resolved: '+$name)}
- $relative=$library.Value.path;$found=$false
+ if($library){$relative=$library.Value.path}else{
+  $download=$assets.project.frameworks.PSObject.Properties.Value.downloadDependencies|Where-Object{$_.name -eq $name}|Select-Object -First 1
+  if(-not $download){throw ('Runtime pack not resolved: '+$name)}
+  $runtimeVersion=$download.version.Trim('[',']').Split(',')[0].Trim()
+  $relative=$name.ToLowerInvariant()+'/'+$runtimeVersion
+ }
+ $found=$false
  foreach($packagesRoot in $packages){$pack=Join-Path $packagesRoot $relative;if(Test-Path -LiteralPath $pack){
   $target=Join-Path $notices $name;New-Item -ItemType Directory -Path $target -Force|Out-Null
   $files=Get-ChildItem -LiteralPath $pack -File|Where-Object{$_.Name -match '^(LICENSE(\.TXT)?|THIRD-PARTY-NOTICES\.TXT)$'}
