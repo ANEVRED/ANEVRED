@@ -1,0 +1,50 @@
+name: Prepare public beta
+on:
+  push:
+    branches: [codex/public-beta-0.3.5]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: anevred-public-beta-0.3.5
+  cancel-in-progress: true
+jobs:
+  prepare:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Settings persistence regressions
+        run: dotnet run --project Tests/SettingsPersistence/SettingsPersistence.csproj --configuration Release
+      - name: Macro persistence regressions
+        run: dotnet run --project Tests/MacroPersistence/MacroPersistence.csproj --configuration Release
+      - name: Runtime and display regressions
+        run: dotnet run --project Tests/RuntimeEfficiency/RuntimeEfficiency.csproj --configuration Release
+      - name: Build portable package with runtime notices
+        shell: pwsh
+        run: ./Tools/PublishBeta.ps1 -OutputDirectory "$env:RUNNER_TEMP/anevred-release"
+      - name: Keep build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ANEVRED-0.3.5-win-x64
+          path: |
+            ${{ runner.temp }}/anevred-release/*.zip
+            ${{ runner.temp }}/anevred-release/SHA256SUMS.txt
+      - name: Prepare reviewable release draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v0.3.5 --json isDraft --jq .isDraft 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create v0.3.5 --draft --prerelease --target $env:GITHUB_SHA --title "ANEVRED v0.3.5 Public Beta" --notes-file docs/RELEASE_0.3.5.md
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create release draft' }
+          } else {
+            $draft = gh release view v0.3.5 --json isDraft --jq .isDraft
+            if ($draft -ne 'true') { throw 'Existing published release will not be changed' }
+            gh release edit v0.3.5 --target $env:GITHUB_SHA --notes-file docs/RELEASE_0.3.5.md
+          }
+          gh release upload v0.3.5 "$env:RUNNER_TEMP/anevred-release/ANEVRED-0.3.5-win-x64.zip" "$env:RUNNER_TEMP/anevred-release/SHA256SUMS.txt" --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Could not upload release assets' }

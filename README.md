@@ -10,6 +10,15 @@ ANEVRED is a local-first desktop application focused on performance monitoring, 
 
 > Monitor your system, optimize background activity, track Star Citizen sessions, and translate on-screen text without game modifications.
 
+## Download and use
+
+ANEVRED is free to download and use. Donations are optional.
+
+**[Download a public beta](https://github.com/ANEVRED/ANEVRED/releases)** · [Getting started](docs/GETTING_STARTED.md) · [Report a problem](https://github.com/ANEVRED/ANEVRED/issues)
+
+Choose the Windows x64 ZIP with the included runtime, extract the whole folder and run `ANEVRED.exe`. No separate .NET installation is required for that package. The full Main edition includes optional translation; compatible Chrome/language packs are required only for that feature.
+
+The software is currently a beta. Automatic optimization is off by default for new installations. The separate Workstation memory-growth report remains under investigation; see the release notes for testing limits.
 ## Screenshots
 
 ### Dashboard

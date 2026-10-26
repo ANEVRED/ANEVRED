@@ -66,6 +66,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly SelfDiagnosticsService _diagnosticsService = new();
     private string _diagnosticsExportStatus = string.Empty;
     private bool _settingsSaveFailed;
+    private bool _macroSaveFailed;
     private DateTime _lastMemoryOptimization = DateTime.MinValue;
     private DateTime _lastCpuOptimization = DateTime.MinValue;
     private DateTime _nextAutoCpuOptimizationAllowed = DateTime.MinValue;
@@ -208,6 +209,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         if (!string.IsNullOrWhiteSpace(_settingsService.LoadWarning))
         {
             AddLog("Warn", _settingsService.LoadWarning);
+        }
+        if (!string.IsNullOrWhiteSpace(_macroStorage.LoadWarning))
+        {
+            AddLog("Warn", _macroStorage.LoadWarning);
         }
         UpdateSelfDiagnostics();
     }
@@ -558,8 +563,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     }
 
     public bool IsDashboardView => CurrentView == "Dashboard";
-    public bool HasSettingsLoadWarning => _settingsSaveFailed || !string.IsNullOrWhiteSpace(_settingsService.LoadWarning);
+    public bool HasSettingsLoadWarning => _settingsSaveFailed || _macroSaveFailed
+        || !string.IsNullOrWhiteSpace(_settingsService.LoadWarning) || !string.IsNullOrWhiteSpace(_macroStorage.LoadWarning);
     public string SettingsLoadWarningText => _settingsSaveFailed ? L["SettingsSaveWarning"]
+        : _macroSaveFailed ? L["MacroSaveWarning"]
+        : !string.IsNullOrWhiteSpace(_macroStorage.LoadWarning) ? L["MacroRecoveryWarning"]
         : HasSettingsLoadWarning ? L["SettingsRecoveryWarning"] : string.Empty;
     public string DiagnosticsSummaryText => _diagnosticsService.Latest is not { } sample
         ? L["DiagnosticsWaiting"]
@@ -1773,7 +1781,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             SelectedMacro.RunState = MacroRunState.Stopped;
         }
 
-        _macroStorage.Save(Macros);
+        if (!TrySaveMacros()) return;
         MacroStatusText = L["MacroSaved"];
         MacroHotkeysChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -2061,10 +2069,35 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         if (Macros.All(macro => ValidateMacro(macro).IsValid))
         {
-            _macroStorage.Save(Macros);
+            TrySaveMacros();
         }
     }
 
+    private bool TrySaveMacros()
+    {
+        var wasFailed = _macroSaveFailed;
+        try
+        {
+            _macroStorage.Save(Macros);
+            _macroSaveFailed = false;
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _macroSaveFailed = true;
+            MacroStatusText = L["MacroSaveWarning"];
+            if (!wasFailed) AddLog("Warn", L["MacroSaveWarning"]);
+            return false;
+        }
+        finally
+        {
+            if (wasFailed != _macroSaveFailed)
+            {
+                OnPropertyChanged(nameof(HasSettingsLoadWarning));
+                OnPropertyChanged(nameof(SettingsLoadWarningText));
+            }
+        }
+    }
     private void MacroExecutionChanged(object? sender, MacroExecutionChangedEventArgs e)
     {
         System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() =>
