@@ -522,5 +522,19 @@
   "LogMacroStarted": "Makro gestartet: {0}",
   "LogMacroFinished": "Makro beendet: {0}",
   "LogMacroCanceled": "Makro abgebrochen: {0}",
-  "LogMacroFailed": "Makro fehlgeschlagen ({0}): {1}"
+  "LogMacroFailed": "Makro fehlgeschlagen ({0}): {1}",
+"SelfDiagnostics": "Eigenverbrauch von ANEVRED",
+  "DiagnosticsWaiting": "Messwerte werden ermittelt …",
+  "DiagnosticsSummary": "Speicher: {0:0.0} MB reserviert · {1:0.0} MB im RAM · CPU: {2:0.0} %",
+  "DiagnosticsDetails": ".NET-Speicher: {0:0.0} MB · Systemressourcen: {1} · Threads: {2} · Laufzeit: {3} h {4} min",
+  "DiagnosticsTrend": "Speicheränderung seit erster Messung: {0:+0.0;-0.0;0.0} MB",
+  "DiagnosticsForeground": "Normalbetrieb: Anzeige jede Sekunde, GPU alle 5 Sekunden.",
+  "DiagnosticsBackground": "Fenster verborgen oder minimiert: Messung alle 5 Sekunden, Prozesse und GPU frühestens alle 15 Sekunden.",
+  "DiagnosticsPrivacy": "Nur Eigenverbrauch, keine fremden Prozessnamen. Maximal 120 Messwerte bleiben im RAM. Eine Datei entsteht erst beim Export.",
+  "ExportDiagnostics": "Diagnose als CSV speichern",
+  "DiagnosticsExported": "Diagnose gespeichert.",
+  "DiagnosticsExportFailed": "Speichern fehlgeschlagen. Bitte einen beschreibbaren Speicherort wählen.",
+  "SettingsRecoveryWarning": "Die Einstellungsdatei konnte nicht vollständig geladen werden. Eine vorhandene Sicherung wurde bevorzugt. Bitte die Schutzliste prüfen; Details stehen im Protokoll.",
+"SettingsSaveWarning": "Die Einstellungen konnten nicht gespeichert werden. Änderungen sind noch nicht dauerhaft gesichert. Bitte den Speicherort und die Zugriffsrechte prüfen.",
+  "AlreadyRunning": "ANEVRED läuft bereits. Bitte das vorhandene Fenster oder das Symbol im Infobereich öffnen."
 }

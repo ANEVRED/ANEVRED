@@ -17,6 +17,9 @@ namespace ANEVRED;
 
 public partial class MainWindow : Window
 {
+    private const double DesignWidth = 1440;
+    private const double DesignHeight = 820;
+    private const double MinimumLayoutScale = 0.82;
     private const int WmHotkey = 0x0312;
     private const int WmKeydown = 0x0100;
     private const int WmKeyup = 0x0101;
@@ -116,13 +119,23 @@ public partial class MainWindow : Window
         Loaded += (_, _) =>
         {
             RestoreMainWindowPlacement();
+            UpdateLayoutScale();
             UpdateUiDimmingAutoTimer();
             ApplyUiDimmingOverlay();
             ApplyDisplayColorFilter();
         };
-        StateChanged += (_, _) => RememberMainWindowPlacement();
+        IsVisibleChanged += (_, _) => _viewModel.SetWindowVisible(IsVisible && WindowState != WindowState.Minimized);
+        StateChanged += (_, _) =>
+        {
+            RememberMainWindowPlacement();
+            _viewModel.SetWindowVisible(IsVisible && WindowState != WindowState.Minimized);
+        };
         LocationChanged += (_, _) => RememberMainWindowPlacement();
-        SizeChanged += (_, _) => RememberMainWindowPlacement();
+        SizeChanged += (_, _) =>
+        {
+            UpdateLayoutScale();
+            RememberMainWindowPlacement();
+        };
         _screenTranslationTimer.Interval = TimeSpan.FromSeconds(30);
         _screenTranslationTimer.Tick += async (_, _) => await UpdateScreenTranslationAsync();
         _uiDimmingAutoTimer.Interval = TimeSpan.FromSeconds(8);
@@ -226,6 +239,21 @@ public partial class MainWindow : Window
 
         _lastNonMinimizedWindowState = WindowState;
         SaveMainWindowPlacement();
+    }
+
+    private void UpdateLayoutScale()
+    {
+        if (ActualWidth <= 0 || ActualHeight <= 0)
+        {
+            return;
+        }
+
+        var widthScale = ActualWidth / DesignWidth;
+        var heightScale = ActualHeight / DesignHeight;
+        var scale = Math.Clamp(Math.Min(widthScale, heightScale), MinimumLayoutScale, 1);
+
+        WindowScaleTransform.ScaleX = scale;
+        WindowScaleTransform.ScaleY = scale;
     }
 
     private void ApplyLocalizedColumnHeaders()

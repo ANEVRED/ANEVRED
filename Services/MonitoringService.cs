@@ -10,6 +10,7 @@ public sealed class MonitoringService : IDisposable
     private readonly PdhGpuSampler _gpuSampler = new();
     private readonly CpuTemperatureSampler _cpuTemperatureSampler = new();
     private readonly Dictionary<int, (TimeSpan CpuTime, DateTime SampleTime)> _processCpuSamples = [];
+    private GpuMetric _lastGpuMetric = new();
     private readonly int _processorCount = Environment.ProcessorCount;
 
     public MonitoringService(ProcessProtectionService protectionService)
@@ -17,7 +18,7 @@ public sealed class MonitoringService : IDisposable
         _protectionService = protectionService;
     }
 
-    public SystemSnapshot GetSnapshot(bool includeProcesses = true, int maxProcesses = 150)
+    public SystemSnapshot GetSnapshot(bool includeProcesses = true, int maxProcesses = 150, bool includeGpu = true)
     {
         var memory = MemoryStatusEx.Create();
         if (!NativeMethods.GlobalMemoryStatusEx(ref memory))
@@ -32,9 +33,13 @@ public sealed class MonitoringService : IDisposable
         var pagefileAvailableGb = BytesToGb(memory.ullAvailPageFile);
         var pagefileUsedGb = Math.Max(0, pagefileTotalGb - pagefileAvailableGb);
         var (totalCpu, cores) = _cpuSampler.Read();
-        var gpu = _gpuSampler.Read();
+        // GPU and process polling have independent intervals. Refresh the PID cache on each
+        // scheduled GPU read so they need not coincide to produce fresh process GPU values.
+        var gpu = includeGpu
+            ? _lastGpuMetric = _gpuSampler.Read()
+            : _lastGpuMetric;
         var cpuTemperature = _cpuTemperatureSampler.Read();
-        var processes = includeProcesses ? ReadProcesses(maxProcesses, _gpuSampler.LastProcessMetrics) : [];
+        var processes = includeProcesses ? ReadProcesses(maxProcesses, _gpuSampler.LastProcessMetrics, totalCpu) : [];
         var gpuAvailable = gpu.IsAvailable && IsFinite(gpu.UsagePercent);
         var vramAvailable = gpu.HasValidVram;
 
@@ -67,7 +72,10 @@ public sealed class MonitoringService : IDisposable
         _gpuSampler.Dispose();
     }
 
-    private List<ProcessSnapshot> ReadProcesses(int maxProcesses, IReadOnlyDictionary<int, ProcessGpuMetric> processGpuMetrics)
+    private List<ProcessSnapshot> ReadProcesses(
+        int maxProcesses,
+        IReadOnlyDictionary<int, ProcessGpuMetric> processGpuMetrics,
+        double totalCpuPercent)
     {
         var now = DateTime.UtcNow;
         var metrics = new List<ProcessMetric>();
@@ -114,6 +122,8 @@ public sealed class MonitoringService : IDisposable
         {
             _processCpuSamples.Remove(stalePid);
         }
+
+        metrics = ScaleProcessCpuMetrics(metrics, totalCpuPercent);
 
         var limit = Math.Clamp(maxProcesses, 50, 300);
         var halfLimit = Math.Max(25, limit / 2);
@@ -174,6 +184,30 @@ public sealed class MonitoringService : IDisposable
         bool IsProtected,
         bool IsCritical,
         bool IsStarCitizen);
+
+    private static List<ProcessMetric> ScaleProcessCpuMetrics(List<ProcessMetric> metrics, double totalCpuPercent)
+    {
+        if (metrics.Count == 0 || !IsFinite(totalCpuPercent) || totalCpuPercent <= 0)
+        {
+            return metrics;
+        }
+
+        var measuredProcessCpu = metrics.Sum(process => process.CpuPercent);
+        if (measuredProcessCpu <= 0)
+        {
+            return metrics;
+        }
+
+        var scale = totalCpuPercent / measuredProcessCpu;
+        if (!IsFinite(scale) || Math.Abs(scale - 1) < 0.05)
+        {
+            return metrics;
+        }
+
+        return metrics
+            .Select(process => process with { CpuPercent = Math.Clamp(process.CpuPercent * scale, 0, 100) })
+            .ToList();
+    }
 
     private static (double WorkingSetMb, double PrivateCommitMb) ReadProcessMemory(Process process)
     {

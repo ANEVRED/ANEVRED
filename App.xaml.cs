@@ -2,9 +2,20 @@ namespace ANEVRED;
 
 public partial class App : System.Windows.Application
 {
+    private Services.SingleInstanceService? _singleInstance;
+
     protected override async void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        _singleInstance = new Services.SingleInstanceService();
+        if (!_singleInstance.Acquired)
+        {
+            var localizer = new Services.LocalizationService(Services.SettingsService.DetectLanguage());
+            System.Windows.MessageBox.Show(localizer["AlreadyRunning"], "ANEVRED");
+            Shutdown();
+            return;
+        }
 
         var mainWindow = new MainWindow
         {
@@ -45,5 +56,11 @@ public partial class App : System.Windows.Application
 
             mainWindow.Activate();
         }
+    }
+
+    protected override void OnExit(System.Windows.ExitEventArgs e)
+    {
+        _singleInstance?.Dispose();
+        base.OnExit(e);
     }
 }

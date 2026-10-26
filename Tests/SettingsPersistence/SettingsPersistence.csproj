@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Services/SettingsService.cs" Link="SettingsService.cs" />
+    <Compile Include="../../Models/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../../Models/AppProfile.cs" Link="AppProfile.cs" />
+    <Compile Include="../../Models/DataRetentionMode.cs" Link="DataRetentionMode.cs" />
+    <Compile Include="../../Models/ProtectionRule.cs" Link="ProtectionRule.cs" />
+    <Compile Include="../../Models/MacroDefinition.cs" Link="MacroDefinition.cs" />
+    <Compile Include="../../Models/MacroStep.cs" Link="MacroStep.cs" />
+    <Compile Include="../../Models/MacroStepType.cs" Link="MacroStepType.cs" />
+    <Compile Include="../../Models/MacroExecutionMode.cs" Link="MacroExecutionMode.cs" />
+    <Compile Include="../../Models/MacroRunState.cs" Link="MacroRunState.cs" />
+  </ItemGroup>
+</Project>

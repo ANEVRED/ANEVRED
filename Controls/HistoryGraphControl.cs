@@ -130,14 +130,14 @@ public sealed class HistoryGraphControl : FrameworkElement
     {
         if (_observedValues is not null)
         {
-            _observedValues.CollectionChanged -= ValuesCollectionChanged;
+            CollectionChangedEventManager.RemoveHandler(_observedValues, ValuesCollectionChanged);
             _observedValues = null;
         }
 
         if (newValue is INotifyCollectionChanged observable)
         {
             _observedValues = observable;
-            _observedValues.CollectionChanged += ValuesCollectionChanged;
+            CollectionChangedEventManager.AddHandler(_observedValues, ValuesCollectionChanged);
         }
 
         InvalidateVisual();

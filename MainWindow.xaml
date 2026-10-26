@@ -7,22 +7,25 @@
         xmlns:models="clr-namespace:ANEVRED.Models"
         mc:Ignorable="d"
         Title="ANEVRED Optimizer" Icon="Assets/AppIcon.ico" Height="820" Width="1440" MinHeight="700" MinWidth="1180" WindowState="Maximized">
-    <Grid Background="{DynamicResource WindowBackgroundBrush}">
+    <Grid x:Name="RootLayout" Background="{DynamicResource WindowBackgroundBrush}">
+        <Grid.LayoutTransform>
+            <ScaleTransform x:Name="WindowScaleTransform" ScaleX="1" ScaleY="1"/>
+        </Grid.LayoutTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="52"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="42"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="248"/>
+            <ColumnDefinition x:Name="SidebarColumn" Width="248"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="320"/>
+            <ColumnDefinition x:Name="RightRailColumn" Width="320"/>
         </Grid.ColumnDefinitions>
 
         <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#06101A" BorderBrush="#122236" BorderThickness="0,0,0,1">
             <Grid Margin="14,0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="218"/>
+                    <ColumnDefinition x:Name="TopBrandColumn" Width="218"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -49,12 +52,12 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding CurrentProfile}" Width="180" Margin="0,0,16,0"/>
+                    <ComboBox x:Name="ProfileComboBox" ItemsSource="{Binding Profiles}" SelectedItem="{Binding CurrentProfile}" Width="180" Margin="0,0,16,0"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" Background="{DynamicResource SidebarBackgroundBrush}" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="0,0,1,0" Padding="10">
+        <Border x:Name="SidebarRail" Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" Background="{DynamicResource SidebarBackgroundBrush}" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="0,0,1,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -62,7 +65,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                <StackPanel x:Name="SidebarStatusPanel" Grid.Row="0" Margin="0,0,0,10">
                     <Border Style="{StaticResource PanelCardStyle}" Padding="16">
                         <StackPanel>
                             <TextBlock Text="{Binding L[SystemStatus]}" FontWeight="SemiBold" Foreground="{DynamicResource SecondaryTextBrush}"/>
@@ -79,7 +82,7 @@
                             <DataTemplate>
                                 <Button Style="{StaticResource SidebarButtonStyle}" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Key}" Margin="0,0,0,6">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding Icon}" Width="24" Foreground="{DynamicResource AccentBrush}"/>
+                                        <TextBlock Text="{Binding Icon}" Width="24" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center"/>
                                         <TextBlock Text="{Binding Title}"/>
                                     </StackPanel>
                                 </Button>
@@ -88,7 +91,7 @@
                     </ItemsControl>
                 </Border>
 
-                <StackPanel Grid.Row="2" Margin="8,12,8,4">
+                <StackPanel x:Name="SidebarSettingsPanel" Grid.Row="2" Margin="8,12,8,4">
                     <TextBlock Text="{Binding L[Language]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
                     <ComboBox ItemsSource="{Binding SupportedLanguages}" DisplayMemberPath="DisplayName" SelectedValuePath="Code" SelectedValue="{Binding CurrentLanguage}" Margin="0,0,0,12"/>
                     <TextBlock Text="{Binding L[Theme]}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
@@ -109,9 +112,15 @@
                    RenderOptions.BitmapScalingMode="HighQuality"
                    SnapsToDevicePixels="True"
                    Effect="{DynamicResource LogoContrastEffect}"/>
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="{Binding IsDashboardView, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel>
-                    <ItemsControl ItemsSource="{Binding MetricCards}" Margin="0,0,0,8">
+            <Grid Visibility="{Binding IsDashboardView, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition x:Name="DashboardGraphRow" Height="0.95*" MinHeight="180"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition x:Name="DashboardBottomRow" Height="1.35*" MinHeight="300"/>
+                </Grid.RowDefinitions>
+
+                    <ItemsControl Grid.Row="0" ItemsSource="{Binding MetricCards}" Margin="0,0,0,8">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel/>
@@ -137,7 +146,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Grid Margin="0,0,0,8">
+                    <Grid Grid.Row="1" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1.1*"/>
                             <ColumnDefinition Width="0.8*"/>
@@ -146,7 +155,7 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="205"/>
+                                    <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                                 <Grid>
                                     <TextBlock Text="{Binding L[PerformanceOverview]}" FontSize="16" FontWeight="SemiBold"/>
@@ -169,7 +178,7 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="205"/>
+                                    <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="{Binding L[FrametimeGraph]}" FontSize="16" FontWeight="SemiBold"/>
                                 <controls:HistoryGraphControl Grid.Row="1" Values="{Binding FrametimeHistory}" MaxPoints="{Binding SelectedHistoryPoints}" Stroke="{DynamicResource FrametimeAccentBrush}" Fill="{DynamicResource GraphFillBrush}" Margin="0,12,0,0"/>
@@ -177,7 +186,7 @@
                         </Border>
                     </Grid>
 
-                    <Grid Margin="0,0,0,8">
+                    <Grid Grid.Row="2" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1*"/>
                             <ColumnDefinition Width="1*"/>
@@ -214,16 +223,16 @@
                         </Border>
                     </Grid>
 
-                    <Grid>
+                    <Grid Grid.Row="3">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.2*"/>
-                            <ColumnDefinition Width="0.8*"/>
+                            <ColumnDefinition Width="1.08*"/>
+                            <ColumnDefinition Width="0.92*"/>
                         </Grid.ColumnDefinitions>
                         <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,8,0">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="220"/>
+                                    <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="{Binding L[TopProcesses]}" FontSize="16" FontWeight="SemiBold"/>
                                 <DataGrid Grid.Row="1"
@@ -260,10 +269,10 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="220"/>
+                                    <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                                 <TextBlock Text="{Binding L[CoreLoad]}" FontSize="16" FontWeight="SemiBold"/>
-                                <ScrollViewer Grid.Row="1" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <ScrollViewer Grid.Row="1" Margin="0,12,0,0" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
                                     <ItemsControl ItemsSource="{Binding Cores}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
@@ -294,8 +303,7 @@
                             </Grid>
                         </Border>
                     </Grid>
-                </StackPanel>
-            </ScrollViewer>
+            </Grid>
 
             <ScrollViewer Visibility="{Binding IsAiView, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Border Style="{StaticResource PanelCardStyle}">
@@ -1323,8 +1331,26 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <ScrollViewer Visibility="{Binding IsSettingsView, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <ScrollViewer Visibility="{Binding IsSettingsView, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel>
+                    <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12"
+                            Visibility="{Binding HasSettingsLoadWarning, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{Binding SettingsLoadWarningText}" TextWrapping="Wrap" Foreground="{DynamicResource CriticalBrush}"/>
+                    </Border>
+                    <Border x:Name="SelfDiagnosticsPanel" Style="{StaticResource PanelCardStyle}" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="{Binding L[SelfDiagnostics]}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                            <TextBlock Text="{Binding DiagnosticsSummaryText}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                            <TextBlock Text="{Binding DiagnosticsDetailsText}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,6"/>
+                            <TextBlock Text="{Binding DiagnosticsTrendText}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                            <TextBlock Text="{Binding DiagnosticsModeText}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                            <TextBlock Text="{Binding L[DiagnosticsPrivacy]}" TextWrapping="Wrap" Foreground="{DynamicResource DisabledTextBrush}" Margin="0,8,0,10"/>
+                            <WrapPanel>
+                                <Button Content="{Binding L[ExportDiagnostics]}" Command="{Binding ExportDiagnosticsCommand}" Margin="0,0,12,0"/>
+                                <TextBlock Text="{Binding DiagnosticsExportStatus}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1*"/>
@@ -1678,7 +1704,7 @@
             </ScrollViewer>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" Grid.Column="2" Padding="0,12,12,12" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="RightRail" Grid.Row="1" Grid.Column="2" Padding="0,12,12,12" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
                 <Border Style="{StaticResource PanelCardStyle}" Margin="0,0,0,10">
                     <StackPanel>

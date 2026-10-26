@@ -522,5 +522,19 @@
   "LogMacroStarted": "Macro started: {0}",
   "LogMacroFinished": "Macro finished: {0}",
   "LogMacroCanceled": "Macro canceled: {0}",
-  "LogMacroFailed": "Macro failed ({0}): {1}"
+  "LogMacroFailed": "Macro failed ({0}): {1}",
+"SelfDiagnostics": "ANEVRED resource usage",
+  "DiagnosticsWaiting": "Collecting measurements …",
+  "DiagnosticsSummary": "Memory: {0:0.0} MB private · {1:0.0} MB resident · CPU: {2:0.0} %",
+  "DiagnosticsDetails": ".NET memory: {0:0.0} MB · Handles: {1} · Threads: {2} · Uptime: {3} h {4} min",
+  "DiagnosticsTrend": "Memory change since first measurement: {0:+0.0;-0.0;0.0} MB",
+  "DiagnosticsForeground": "Normal mode: display every second, GPU every 5 seconds.",
+  "DiagnosticsBackground": "Window hidden or minimized: measurements every 5 seconds, processes and GPU no more often than every 15 seconds.",
+  "DiagnosticsPrivacy": "Only this application, no other process names. Up to 120 measurements stay in memory. Files are created only when you export.",
+  "ExportDiagnostics": "Save diagnostics as CSV",
+  "DiagnosticsExported": "Diagnostics saved.",
+  "DiagnosticsExportFailed": "Could not save. Please choose a writable location.",
+  "SettingsRecoveryWarning": "The settings file could not be fully loaded. An available backup was preferred. Please check protection rules; details are in the log.",
+"SettingsSaveWarning": "Settings could not be saved. Changes are not yet stored permanently. Please check the storage location and access permissions.",
+  "AlreadyRunning": "ANEVRED is already running. Please open the existing window or its tray icon."
 }

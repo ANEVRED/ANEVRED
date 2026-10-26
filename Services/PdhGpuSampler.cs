@@ -12,6 +12,11 @@ internal sealed class PdhGpuSampler : IDisposable
     private const uint PdhMoreData = 0x800007D2;
     private const uint PdhFmtDouble = 0x00000200;
 
+    private static readonly TimeSpan NvidiaRefreshInterval = TimeSpan.FromSeconds(5);
+    private long _lastNvidiaReadTimestamp;
+    private bool _hasReadNvidia;
+    private GpuMetric? _cachedNvidiaMetric;
+
     private IntPtr _query;
     private IntPtr _engineCounter;
     private IntPtr _dedicatedUsageCounter;
@@ -28,12 +33,15 @@ internal sealed class PdhGpuSampler : IDisposable
         Initialize();
     }
 
-    public GpuMetric Read()
+    public GpuMetric Read(bool includeProcessMetrics = true)
     {
-        var nvidiaMetric = TryReadNvidiaSmi();
+        var nvidiaMetric = ReadCachedNvidiaMetric();
         if (nvidiaMetric is not null)
         {
-            RefreshProcessMetricsFromPdh();
+            if (includeProcessMetrics)
+            {
+                RefreshProcessMetricsFromPdh();
+            }
             return RememberIfValid(nvidiaMetric);
         }
 
@@ -53,9 +61,11 @@ internal sealed class PdhGpuSampler : IDisposable
         var dedicatedUsageValues = _dedicatedUsageCounter == IntPtr.Zero
             ? []
             : ReadCounterValues(_dedicatedUsageCounter);
-        var processDedicatedUsageValues = _processDedicatedUsageCounter == IntPtr.Zero
-            ? dedicatedUsageValues
-            : ReadCounterValues(_processDedicatedUsageCounter);
+        var processDedicatedUsageValues = !includeProcessMetrics
+            ? []
+            : _processDedicatedUsageCounter == IntPtr.Zero
+                ? dedicatedUsageValues
+                : ReadCounterValues(_processDedicatedUsageCounter);
 
         var gpuUsage = _engineCounter == IntPtr.Zero
             ? 0
@@ -69,7 +79,10 @@ internal sealed class PdhGpuSampler : IDisposable
             ? 0
             : ReadCounterValues(_dedicatedLimitCounter).Sum(item => item.Value);
 
-        _lastProcessMetrics = BuildProcessMetrics(engineValues, processDedicatedUsageValues);
+        if (includeProcessMetrics)
+        {
+            _lastProcessMetrics = BuildProcessMetrics(engineValues, processDedicatedUsageValues);
+        }
 
         return RememberIfValid(new GpuMetric
         {
@@ -255,6 +268,21 @@ internal sealed class PdhGpuSampler : IDisposable
         }
 
         return metric.IsAvailable ? metric : _lastValidMetric ?? metric;
+    }
+
+    private GpuMetric? ReadCachedNvidiaMetric()
+    {
+        var now = Stopwatch.GetTimestamp();
+        if (_hasReadNvidia && Stopwatch.GetElapsedTime(_lastNvidiaReadTimestamp, now) < NvidiaRefreshInterval)
+        {
+            return _cachedNvidiaMetric;
+        }
+
+        // Cache unsuccessful attempts too, so unavailable drivers do not trigger repeated probes.
+        _hasReadNvidia = true;
+        _lastNvidiaReadTimestamp = now;
+        _cachedNvidiaMetric = TryReadNvidiaSmi();
+        return _cachedNvidiaMetric;
     }
 
     private static GpuMetric? TryReadNvidiaSmi()

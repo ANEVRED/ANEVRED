@@ -20,9 +20,9 @@ public sealed class DataStorageItem
         var value = Math.Max(0, bytes);
         var unit = 0;
         var display = (double)value;
-        while (display >= 1024 && unit < units.Length - 1)
+        while (display >= 1000 && unit < units.Length - 1)
         {
-            display /= 1024;
+            display /= 1000;
             unit++;
         }
 

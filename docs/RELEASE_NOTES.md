@@ -1,5 +1,17 @@
 # Release Text
 
+## ANEVRED v0.3.4
+
+- Protection rules now survive restarts exactly as saved, including removed defaults and an intentionally empty list.
+- Settings are written atomically with a last-good backup. Recovery and write failures are visible in Settings; damaged files are preserved before replacement.
+- A second application instance is prevented from overwriting shared settings.
+- Dashboard cards and chart history are reused instead of recreated/copied on each sample. Graph subscriptions use weak events.
+- Hidden/minimized windows poll every 5 seconds; process and GPU refreshes run no more often than every 15 seconds. Visible GPU refreshes run every 5 seconds. Time-based automatic optimization intervals remain in effect.
+- NVIDIA summary queries are cached for 5 seconds. GPU process data follows the GPU refresh interval independently of the process-list interval. WMI temperature objects are explicitly released.
+- Settings includes local self-diagnostics: private/resident/.NET memory, CPU, handles, threads, uptime, and memory change since the first measurement. A fixed buffer holds at most 120 samples. CSV is written only on manual export and includes the application version.
+- These changes reduce avoidable work and make long-term memory problems measurable. They do not establish that the separate Lite executable's reported memory growth has been fixed.
+
+Validation: Release build; isolated settings recovery/persistence regressions; card identity/binding and visibility cadence checks; bounded diagnostics/CSV checks; concurrent instance lock checks; diagnostics panel rendered with actual bindings and theme. No optimization actions or real user settings were used during tests.
 ## ANEVRED v0.3.1
 
 ANEVRED v0.3.1 is a refinement release focused on Star Citizen session history, more reliable log matching, safer cleanup behavior, and clearer project positioning.

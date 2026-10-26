@@ -59,6 +59,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly DispatcherTimer _timer = new();
     private SystemSnapshot? _lastSnapshot;
     private bool _isRefreshing;
+    private bool _isWindowVisible = true;
+    private bool _isDisposed;
+    private DateTime _lastGpuRefresh = DateTime.MinValue;
+    private DateTime _lastHistoryUpdate = DateTime.MinValue;
+    private readonly SelfDiagnosticsService _diagnosticsService = new();
+    private string _diagnosticsExportStatus = string.Empty;
+    private bool _settingsSaveFailed;
     private DateTime _lastMemoryOptimization = DateTime.MinValue;
     private DateTime _lastCpuOptimization = DateTime.MinValue;
     private DateTime _nextAutoCpuOptimizationAllowed = DateTime.MinValue;
@@ -134,6 +141,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OptimizeVramCommand = new RelayCommand(_ => RunVramOptimization());
         ResetPrioritiesCommand = new RelayCommand(_ => _optimizationService.ResetChangedPriorities());
         ExportLogsCommand = new RelayCommand(_ => ExportLogs());
+        ExportDiagnosticsCommand = new RelayCommand(_ => ExportDiagnostics());
         OptimizePowerPlanCommand = new RelayCommand(async _ => await _powerPlanService.OptimizeCurrentPlanAsync());
         ApplyRecommendationCommand = new RelayCommand(ApplyRecommendation);
         IgnoreRecommendationCommand = new RelayCommand(IgnoreRecommendation);
@@ -197,6 +205,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
 
         AddLog("Info", L["LogAppStarted"]);
+        if (!string.IsNullOrWhiteSpace(_settingsService.LoadWarning))
+        {
+            AddLog("Warn", _settingsService.LoadWarning);
+        }
+        UpdateSelfDiagnostics();
     }
 
     public event EventHandler? ThemeChanged;
@@ -309,6 +322,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public RelayCommand OptimizeVramCommand { get; }
     public RelayCommand ResetPrioritiesCommand { get; }
     public RelayCommand ExportLogsCommand { get; }
+    public RelayCommand ExportDiagnosticsCommand { get; }
     public RelayCommand OptimizePowerPlanCommand { get; }
     public RelayCommand ApplyRecommendationCommand { get; }
     public RelayCommand IgnoreRecommendationCommand { get; }
@@ -544,6 +558,61 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     }
 
     public bool IsDashboardView => CurrentView == "Dashboard";
+    public bool HasSettingsLoadWarning => _settingsSaveFailed || !string.IsNullOrWhiteSpace(_settingsService.LoadWarning);
+    public string SettingsLoadWarningText => _settingsSaveFailed ? L["SettingsSaveWarning"]
+        : HasSettingsLoadWarning ? L["SettingsRecoveryWarning"] : string.Empty;
+    public string DiagnosticsSummaryText => _diagnosticsService.Latest is not { } sample
+        ? L["DiagnosticsWaiting"]
+        : L.Format("DiagnosticsSummary", sample.PrivateMemoryMb, sample.WorkingSetMb, sample.CpuPercent);
+    public string DiagnosticsDetailsText => _diagnosticsService.Latest is not { } sample
+        ? string.Empty
+        : L.Format("DiagnosticsDetails", sample.ManagedMemoryMb, sample.Handles, sample.Threads,
+            (int)_diagnosticsService.Uptime.TotalHours, _diagnosticsService.Uptime.Minutes);
+    public string DiagnosticsTrendText => L.Format("DiagnosticsTrend", _diagnosticsService.MemoryChangeMb);
+    public string DiagnosticsModeText => L[_isWindowVisible ? "DiagnosticsForeground" : "DiagnosticsBackground"];
+    public string DiagnosticsExportStatus => _diagnosticsExportStatus;
+
+    public void SetWindowVisible(bool visible)
+    {
+        if (_isDisposed || _isWindowVisible == visible) return;
+        _isWindowVisible = visible;
+        _timer.Interval = TimeSpan.FromSeconds(visible ? 1 : 5);
+        if (visible)
+        {
+            _lastProcessRefresh = DateTime.MinValue;
+            _lastGpuRefresh = DateTime.MinValue;
+            if (_lastSnapshot is not null) UpdateMetricCards(_lastSnapshot);
+        }
+        OnPropertyChanged(nameof(DiagnosticsModeText));
+    }
+
+    private void UpdateSelfDiagnostics()
+    {
+        if (!_diagnosticsService.TrySample()) return;
+        OnPropertyChanged(nameof(DiagnosticsSummaryText));
+        OnPropertyChanged(nameof(DiagnosticsDetailsText));
+        OnPropertyChanged(nameof(DiagnosticsTrendText));
+    }
+
+    private void ExportDiagnostics()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            FileName = $"ANEVRED-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+            Filter = "CSV (*.csv)|*.csv"
+        };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            _diagnosticsService.Export(dialog.FileName);
+            _diagnosticsExportStatus = L["DiagnosticsExported"];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _diagnosticsExportStatus = L["DiagnosticsExportFailed"];
+        }
+        OnPropertyChanged(nameof(DiagnosticsExportStatus));
+    }
     public bool IsAiView => CurrentView == "AI";
     public bool IsProcessesView => CurrentView == "Processes";
     public bool IsGamingView => CurrentView == "Gaming";
@@ -733,7 +802,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     public async Task RefreshAsync()
     {
-        if (_isRefreshing)
+        if (_isRefreshing || _isDisposed)
         {
             return;
         }
@@ -742,9 +811,16 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         try
         {
             var now = DateTime.UtcNow;
-            var processRefreshDue = (now - _lastProcessRefresh) >= TimeSpan.FromSeconds(Settings.ProcessRefreshSeconds);
+            var processInterval = _isWindowVisible ? Settings.ProcessRefreshSeconds : Math.Max(15, Settings.ProcessRefreshSeconds);
+            var processRefreshDue = (now - _lastProcessRefresh) >= TimeSpan.FromSeconds(processInterval);
+            var includeGpu = now - _lastGpuRefresh >= TimeSpan.FromSeconds(_isWindowVisible ? 5 : 15);
             var includeProcesses = processRefreshDue || _lastSnapshot is null;
-            var snapshot = await Task.Run(() => _monitoringService.GetSnapshot(includeProcesses, Settings.MaxDisplayedProcesses));
+            var snapshot = await Task.Run(() => _monitoringService.GetSnapshot(includeProcesses, Settings.MaxDisplayedProcesses, includeGpu));
+            if (_isDisposed)
+            {
+                return;
+            }
+            if (includeGpu) _lastGpuRefresh = now;
             if (!snapshot.ProcessDataUpdated && _lastSnapshot is not null)
             {
                 snapshot = MergeWithPreviousProcesses(snapshot, _lastSnapshot.Processes);
@@ -757,21 +833,25 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
             _lastSnapshot = snapshot;
             UpdateSnapshot(snapshot);
+            UpdateSelfDiagnostics();
             MaybeNotifyHighLoad(snapshot);
             MaybeOptimize(snapshot);
         }
         catch (Exception ex)
         {
-            AddLog("Warn", L.Format("LogMonitoringFailed", ex.Message));
+            if (!_isDisposed) AddLog("Warn", L.Format("LogMonitoringFailed", ex.Message));
         }
         finally
         {
             _isRefreshing = false;
+            if (_isDisposed) _monitoringService.Dispose();
         }
     }
 
     public void Dispose()
     {
+        if (_isDisposed) return;
+        _isDisposed = true;
         _timer.Stop();
         SaveValidMacros();
         _macroExecutionService.ExecutionChanged -= MacroExecutionChanged;
@@ -782,7 +862,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             UnsubscribeMacro(macro);
         }
         _optimizationService.ResetChangedPriorities();
-        _monitoringService.Dispose();
+        if (!_isRefreshing) _monitoringService.Dispose();
+        _diagnosticsService.Dispose();
         _learningService.Flush();
         SaveStarCitizenSessions();
         SaveSettings();
@@ -790,15 +871,24 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void UpdateSnapshot(SystemSnapshot snapshot)
     {
-        AddHistory(RamHistory, snapshot.RamUsagePercent);
-        AddHistory(CpuHistory, snapshot.CpuUsagePercent);
-        AddHistory(GpuHistory, snapshot.GpuUsagePercent);
-        AddHistory(VramHistory, snapshot.VramUsagePercent);
-        AddHistory(FrametimeHistory, snapshot.AverageFrametimeMs);
+        // Keep history windows in seconds even when minimized polling is slower.
+        var historyNow = DateTime.UtcNow;
+        var historySeconds = _lastHistoryUpdate == DateTime.MinValue ? 1
+            : Math.Clamp((int)Math.Round((historyNow - _lastHistoryUpdate).TotalSeconds), 1, 5);
+        _lastHistoryUpdate = historyNow;
+        for (var second = 0; second < historySeconds; second++)
+        {
+            AddHistory(RamHistory, snapshot.RamUsagePercent);
+            AddHistory(CpuHistory, snapshot.CpuUsagePercent);
+            AddHistory(GpuHistory, snapshot.GpuUsagePercent);
+            AddHistory(VramHistory, snapshot.VramUsagePercent);
+            AddHistory(FrametimeHistory, snapshot.AverageFrametimeMs);
+        }
         UpdateStarCitizenSession(snapshot);
-        UpdateMetricCards(snapshot);
+        if (_isWindowVisible && IsDashboardView) UpdateMetricCards(snapshot);
         UpdateRecommendations(snapshot);
-        Replace(Cores, snapshot.Cores.Select(LocalizeCore));
+        if (_isWindowVisible && (IsDashboardView || IsHardwareView))
+            Replace(Cores, snapshot.Cores.Select(LocalizeCore));
         if (snapshot.ProcessDataUpdated)
         {
             var selectedProcessId = SelectedProcess?.Id;
@@ -1304,9 +1394,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         string[] units = ["B", "KB", "MB", "GB"];
         var value = (double)Math.Max(0, bytes);
         var unit = 0;
-        while (value >= 1024 && unit < units.Length - 1)
+        while (value >= 1000 && unit < units.Length - 1)
         {
-            value /= 1024;
+            value /= 1000;
             unit++;
         }
 
@@ -1571,6 +1661,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void RefreshLocalizedComputedText()
     {
+        OnPropertyChanged(nameof(SettingsLoadWarningText));
+        OnPropertyChanged(nameof(DiagnosticsSummaryText));
+        OnPropertyChanged(nameof(DiagnosticsDetailsText));
+        OnPropertyChanged(nameof(DiagnosticsTrendText));
+        OnPropertyChanged(nameof(DiagnosticsModeText));
         OnPropertyChanged(nameof(DataRetentionOptions));
         OnPropertyChanged(nameof(SelectedDataRetentionModeCode));
         OnPropertyChanged(nameof(DataRetentionDisplayText));
@@ -2091,7 +2186,22 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void SaveSettings()
     {
-        _settingsService.Save(Settings);
+        var wasFailed = _settingsSaveFailed;
+        try
+        {
+            _settingsService.Save(Settings);
+            _settingsSaveFailed = false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _settingsSaveFailed = true;
+            if (!wasFailed) AddLog("Warn", L["SettingsSaveWarning"]);
+        }
+        if (wasFailed != _settingsSaveFailed)
+        {
+            OnPropertyChanged(nameof(HasSettingsLoadWarning));
+            OnPropertyChanged(nameof(SettingsLoadWarningText));
+        }
     }
 
     public void SetHotkeyStatus(bool success, string details)
@@ -2157,74 +2267,36 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void UpdateMetricCards(SystemSnapshot snapshot)
     {
-        Replace(MetricCards,
-        [
-            new MetricCard
-            {
-                Title = L["CpuLoad"],
-                Value = CpuUsageText,
-                Detail = L["TotalLoad"],
-                State = PressureText(snapshot.CpuUsagePercent),
-                Accent = BrushFromRgb(245, 158, 11),
-                History = CpuHistory.ToList()
-            },
-            new MetricCard
-            {
-                Title = L["RamUsage"],
-                Value = RamUsageText,
-                Detail = RamGbText,
-                State = PressureText(snapshot.RamUsagePercent),
-                Accent = BrushFromRgb(34, 197, 94),
-                History = RamHistory.ToList()
-            },
-            new MetricCard
-            {
-                Title = L["GpuLoad"],
-                Value = GpuUsageText,
-                Detail = snapshot.IsGpuDataAvailable ? L["WindowsCounter"] : L["NoGpuData"],
-                State = snapshot.IsGpuDataAvailable ? PressureText(snapshot.GpuUsagePercent) : L["Unknown"],
-                Accent = BrushFromRgb(168, 85, 247),
-                History = GpuHistory.ToList()
-            },
-            new MetricCard
-            {
-                Title = L["VramUsage"],
-                Value = VramUsageText,
-                Detail = VramGbText,
-                State = snapshot.IsGpuDataAvailable ? PressureText(snapshot.VramUsagePercent) : L["Unknown"],
-                Accent = BrushFromRgb(59, 130, 246),
-                History = VramHistory.ToList()
-            },
-            new MetricCard
-            {
-                Title = L["Frametime"],
-                Value = FrametimeText,
-                Detail = L["PassiveEstimate"],
-                State = snapshot.AverageFrametimeMs > 22 ? L["Warning"] : L["Stable"],
-                Accent = BrushFromRgb(249, 115, 22),
-                History = FrametimeHistory.ToList()
-            },
-            new MetricCard
-            {
-                Title = L["GpuTemperature"],
-                Value = GpuTemperatureText,
-                Detail = L["GpuTemperature"],
-                State = L["Unknown"],
-                Accent = BrushFromRgb(239, 68, 68),
-                History = []
-            },
-            new MetricCard
-            {
-                Title = L["CpuTemperature"],
-                Value = CpuTemperatureText,
-                Detail = L["CpuTemperature"],
-                State = L["Unknown"],
-                Accent = BrushFromRgb(245, 158, 11),
-                History = []
-            }
-        ]);
+        if (MetricCards.Count == 0)
+        {
+            MetricCards.Add(new MetricCard { Accent = BrushFromRgb(245, 158, 11), History = CpuHistory });
+            MetricCards.Add(new MetricCard { Accent = BrushFromRgb(34, 197, 94), History = RamHistory });
+            MetricCards.Add(new MetricCard { Accent = BrushFromRgb(168, 85, 247), History = GpuHistory });
+            MetricCards.Add(new MetricCard { Accent = BrushFromRgb(59, 130, 246), History = VramHistory });
+            MetricCards.Add(new MetricCard { Accent = BrushFromRgb(249, 115, 22), History = FrametimeHistory });
+            MetricCards.Add(new MetricCard { Accent = BrushFromRgb(239, 68, 68) });
+            MetricCards.Add(new MetricCard { Accent = BrushFromRgb(245, 158, 11) });
+        }
+
+        UpdateCard(0, L["CpuLoad"], CpuUsageText, L["TotalLoad"], PressureText(snapshot.CpuUsagePercent));
+        UpdateCard(1, L["RamUsage"], RamUsageText, RamGbText, PressureText(snapshot.RamUsagePercent));
+        UpdateCard(2, L["GpuLoad"], GpuUsageText, snapshot.IsGpuDataAvailable ? L["WindowsCounter"] : L["NoGpuData"],
+            snapshot.IsGpuDataAvailable ? PressureText(snapshot.GpuUsagePercent) : L["Unknown"]);
+        UpdateCard(3, L["VramUsage"], VramUsageText, VramGbText,
+            snapshot.IsGpuDataAvailable ? PressureText(snapshot.VramUsagePercent) : L["Unknown"]);
+        UpdateCard(4, L["Frametime"], FrametimeText, L["PassiveEstimate"], snapshot.AverageFrametimeMs > 22 ? L["Warning"] : L["Stable"]);
+        UpdateCard(5, L["GpuTemperature"], GpuTemperatureText, L["GpuTemperature"], L["Unknown"]);
+        UpdateCard(6, L["CpuTemperature"], CpuTemperatureText, L["CpuTemperature"], L["Unknown"]);
     }
 
+    private void UpdateCard(int index, string title, string value, string detail, string state)
+    {
+        var card = MetricCards[index];
+        card.Title = title;
+        card.Value = value;
+        card.Detail = detail;
+        card.State = state;
+    }
     private void RefreshNavigationItems()
     {
         Replace(NavigationItems, FeatureCatalog.All
@@ -3388,7 +3460,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private static MediaBrush BrushFromRgb(byte r, byte g, byte b)
     {
-        return new SolidColorBrush(MediaColor.FromRgb(r, g, b));
+        var brush = new SolidColorBrush(MediaColor.FromRgb(r, g, b));
+        brush.Freeze();
+        return brush;
     }
 
     private byte EffectiveDimmingPreviewColor(int value)

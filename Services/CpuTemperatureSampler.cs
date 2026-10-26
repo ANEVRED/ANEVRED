@@ -47,24 +47,43 @@ internal sealed class CpuTemperatureSampler
                 return 0;
             }
 
-            var values = new List<double>();
-            foreach (var item in results)
+            try
             {
-                var method = item.GetType().GetMethod("GetPropertyValue", [typeof(string)]);
-                var raw = method?.Invoke(item, ["CurrentTemperature"]);
-                if (raw is null)
+                var values = new List<double>();
+                foreach (var item in results)
                 {
-                    continue;
+                    try
+                    {
+                        if (item is null)
+                        {
+                            continue;
+                        }
+
+                        var method = item.GetType().GetMethod("GetPropertyValue", [typeof(string)]);
+                        var raw = method?.Invoke(item, ["CurrentTemperature"]);
+                        if (raw is null)
+                        {
+                            continue;
+                        }
+
+                        var celsius = Convert.ToDouble(raw) / 10d - 273.15d;
+                        if (!double.IsNaN(celsius) && !double.IsInfinity(celsius) && celsius is > 0 and < 130)
+                        {
+                            values.Add(celsius);
+                        }
+                    }
+                    finally
+                    {
+                        (item as IDisposable)?.Dispose();
+                    }
                 }
 
-                var celsius = Convert.ToDouble(raw) / 10d - 273.15d;
-                if (!double.IsNaN(celsius) && !double.IsInfinity(celsius) && celsius is > 0 and < 130)
-                {
-                    values.Add(celsius);
-                }
+                return values.Count == 0 ? 0 : values.Max();
             }
-
-            return values.Count == 0 ? 0 : values.Max();
+            finally
+            {
+                (results as IDisposable)?.Dispose();
+            }
         }
         catch
         {
