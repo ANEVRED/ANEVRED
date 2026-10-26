@@ -536,5 +536,7 @@
   "DiagnosticsExportFailed": "Could not save. Please choose a writable location.",
   "SettingsRecoveryWarning": "The settings file could not be fully loaded. An available backup was preferred. Please check protection rules; details are in the log.",
 "SettingsSaveWarning": "Settings could not be saved. Changes are not yet stored permanently. Please check the storage location and access permissions.",
-  "AlreadyRunning": "ANEVRED is already running. Please open the existing window or its tray icon."
+  "AlreadyRunning": "ANEVRED is already running. Please open the existing window or its tray icon.",
+"MacroRecoveryWarning": "The macro file could not be fully loaded. An available backup was preferred. Please check your macros; details are in the log.",
+  "MacroSaveWarning": "Macros could not be saved. Changes are not yet stored permanently."
 }

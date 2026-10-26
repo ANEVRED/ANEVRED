@@ -536,5 +536,7 @@
   "DiagnosticsExportFailed": "Speichern fehlgeschlagen. Bitte einen beschreibbaren Speicherort wählen.",
   "SettingsRecoveryWarning": "Die Einstellungsdatei konnte nicht vollständig geladen werden. Eine vorhandene Sicherung wurde bevorzugt. Bitte die Schutzliste prüfen; Details stehen im Protokoll.",
 "SettingsSaveWarning": "Die Einstellungen konnten nicht gespeichert werden. Änderungen sind noch nicht dauerhaft gesichert. Bitte den Speicherort und die Zugriffsrechte prüfen.",
-  "AlreadyRunning": "ANEVRED läuft bereits. Bitte das vorhandene Fenster oder das Symbol im Infobereich öffnen."
+  "AlreadyRunning": "ANEVRED läuft bereits. Bitte das vorhandene Fenster oder das Symbol im Infobereich öffnen.",
+"MacroRecoveryWarning": "Die Makrodatei konnte nicht vollständig gelesen werden. Eine vorhandene Sicherung wurde bevorzugt. Bitte die Makroliste prüfen; Details stehen im Protokoll.",
+  "MacroSaveWarning": "Die Makros konnten nicht gespeichert werden. Änderungen sind noch nicht dauerhaft gesichert."
 }

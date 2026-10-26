@@ -22,6 +22,9 @@ public sealed class DataStorageService
         var items = new List<DataStorageItem>();
 
         AddFile(items, "settings.json", "Settings", isSettings: true);
+        AddFile(items, "settings.json.bak", "Settings backup", isSettings: true);
+        AddFile(items, "macros.json", "Macro settings", isSettings: true);
+        AddFile(items, "macros.json.bak", "Macro backup", isSettings: true);
         AddFile(items, "learning-history.json", "Work data", isSettings: false);
         AddFile(items, "starcitizen-sessions.json", "Work data", isSettings: false);
         AddMatchingFiles(items, "logs-*.txt", "Exported logs");

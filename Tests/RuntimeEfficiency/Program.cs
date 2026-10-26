@@ -52,7 +52,7 @@ class Program {
   foreach(var name in new[]{"CpuHistory","RamHistory","GpuHistory","VramHistory","FrametimeHistory"}){
    var h=new ObservableCollection<double>(Enumerable.Range(0,3600).Select(i=>(double)(i%100)));Property(vm,name,h);
   }
-  Property(vm,"Logs",new ObservableCollection<LogEntry>());
+  Property(vm,"Logs",new ObservableCollection<LogEntry>()); Field(vm,"_macroStorage",new MacroStorage(AppContext.BaseDirectory));
   var timer=new DispatcherTimer();Field(vm,"_timer",timer);Field(vm,"_currentView","Dashboard");Field(vm,"_isWindowVisible",true);
   var snapshot=new SystemSnapshot{CpuUsagePercent=20,RamUsagePercent=40,IsGpuDataAvailable=true};Field(vm,"_lastSnapshot",snapshot);
   Invoke(vm,"UpdateMetricCards",snapshot);var cards=vm.MetricCards.ToArray();
