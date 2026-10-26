@@ -43,8 +43,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Could not create release draft' }
           } else {
             $draft = gh release view v0.3.5 --json isDraft --jq .isDraft
+            if ($LASTEXITCODE -ne 0) { throw 'Could not verify existing release draft' }
             if ($draft -ne 'true') { throw 'Existing published release will not be changed' }
             gh release edit v0.3.5 --target $env:GITHUB_SHA --notes-file docs/RELEASE_0.3.5.md
+            if ($LASTEXITCODE -ne 0) { throw 'Could not update release draft' }
           }
           gh release upload v0.3.5 "$env:RUNNER_TEMP/anevred-release/ANEVRED-0.3.5-win-x64.zip" "$env:RUNNER_TEMP/anevred-release/SHA256SUMS.txt" --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Could not upload release assets' }

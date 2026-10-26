@@ -4,7 +4,9 @@ $projectRoot=Split-Path $PSScriptRoot
 [xml]$project=Get-Content -LiteralPath (Join-Path $projectRoot 'ANEVRED.csproj') -Raw
 $version=[string]$project.Project.PropertyGroup.Version
 if([string]::IsNullOrWhiteSpace($OutputDirectory)){$OutputDirectory=Join-Path $projectRoot ('bin/Releases/v'+$version)}
-$publish=Join-Path $OutputDirectory ('ANEVRED-'+$version+'-win-x64')
+# Never package an existing folder: it may contain stale or personal extra files.
+$buildRoot=Join-Path $OutputDirectory ('.package-'+[Guid]::NewGuid().ToString('N'))
+$publish=Join-Path $buildRoot ('ANEVRED-'+$version+'-win-x64')
 dotnet publish (Join-Path $projectRoot 'ANEVRED.csproj') --configuration Release --runtime win-x64 --self-contained true --output $publish -p:DebugType=None -p:DebugSymbols=false --nologo
 if($LASTEXITCODE -ne 0){throw 'Publish failed'}
 # Copy the exact runtime-pack notices used by this build; do not guess license terms.
